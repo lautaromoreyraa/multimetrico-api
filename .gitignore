@@ -1,0 +1,12 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Nunca: este proyecto se construye con datos sinteticos.
+# Cualquier planilla real de la operacion queda fuera del repositorio.
+*.xlsx
+*.xls
+*.csv

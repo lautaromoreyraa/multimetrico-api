@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: multimetrico-api
+
+server:
+  # 8080 es el portfolio original y 8081 el rediseno: este arranca en el siguiente
+  # libre para poder tener los tres levantados a la vez.
+  port: 8082
