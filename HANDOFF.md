@@ -3,7 +3,7 @@
 Estado vivo del proyecto. Se actualiza cada vez que una pieza queda terminada.
 El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 
-Última actualización: 2026-08-24 (ola 1 completa + persistencia)
+Última actualización: 2026-08-25, madrugada. Todo el alcance salvo seguridad.
 
 ---
 
@@ -18,7 +18,7 @@ El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 | `importacion` | ✅ terminado | 8 | Perfil configurable; ninguna fila se pierde |
 | `persistencia` | ✅ terminado | 23 | MySQL + Flyway; los tests corren contra H2 en modo MySQL |
 | `seguridad` | ⬜ pendiente | — | |
-| frontend | 🟡 parcial | 0 | En `../multimetrico-frontend`. Compila; falta UI de perfiles y login |
+| frontend | ✅ terminado | **0** | En `../multimetrico-frontend`. Cinco pantallas, sin mocks. Sin tests y sin revisión visual |
 
 **Total actual: 125 tests, en verde.**
 
@@ -30,11 +30,62 @@ El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 docker compose up -d     # MySQL en el 3307
 ./mvnw spring-boot:run   # :8082
 ./mvnw test              # no necesita la base levantada
+
+cd ../multimetrico-frontend && npm run dev   # la pantalla
 ```
+
+El contenedor puede existir apagado de una sesión anterior: si `compose up`
+protesta que el nombre está en uso, es eso — `docker start multimetrico-mysql`
+lo revive **con sus datos**. `docker compose down -v` lo borra de cero.
+
+Vite elige el primer puerto libre desde el 5173, y en esta máquina el 5173 y el
+5174 los ocupan los dev servers del portfolio. Mirá lo que imprime al arrancar.
 
 Ya hay base: lo que se carga sobrevive al reinicio. La aplicación necesita MySQL
 para arrancar; **los tests no**, que corren contra H2 en modo de compatibilidad
 MySQL con las mismas migraciones de Flyway.
+
+---
+
+## Por dónde seguir
+
+En orden de impacto:
+
+**1. Seguridad (PLAN §5.6).** Es lo único que falta del alcance original y lo más
+visible para quien evalúe el proyecto. Hoy cualquiera ve la fila de cualquiera,
+en el backend y en la pantalla. Lo importante es que el control es **por fila, no
+por endpoint**: un asesor que pide la fila de otro recibe 403, nunca la fila. En
+el frontend, "Mi multimétrico" tiene hoy un selector de asesor que hay que
+reemplazar por el legajo del token.
+
+**2. Dos fallas conocidas del backend, chicas y con dueño claro.**
+
+- **`Metrica.Unidad` no la expone ninguna respuesta.** El enum lo tiene —TMO en
+  `SEGUNDOS`, las otras cuatro en `PORCENTAJE`— pero ni `PliegoResponse.EscalaResponse`
+  ni `FilaResponse.CeldaResponse` lo mandan, así que el frontend mantiene un mapa
+  propio en `src/lib/format.ts` que duplica algo que el servidor ya sabe. Agregarlo
+  a esos dos DTOs y borrar el mapa.
+- **`cuadra: true` en una importación `RECHAZADA`.** Un informe rechazado tiene
+  todo en cero y cero más cero cierra, así que el campo que existe para responder
+  "¿entró todo?" dice que sí cuando no entró nada. El frontend lo esquiva mirando
+  `estado`, pero es una fea de la API.
+
+**3. Nadie miró los píxeles de la versión actual del frontend.** El agente que la
+terminó no tenía la extensión de Chrome conectada: verificó cada payload contra
+los tipos y el build pasa, pero las pantallas cambiaron mucho desde la última vez
+que alguien las vio renderizadas. **Es la revisión pendiente más barata y la más
+probable de encontrar algo.**
+
+**4. El frontend no tiene un solo test.** No hay infraestructura montada.
+
+---
+
+## Cómo dejarlo andando para mirarlo
+
+Con el contenedor arriba y la app corriendo, la base ya tiene los datos de la
+verificación de persistencia: pliego **2026-08 / RESIDENCIAL** y un padrón con dos
+equipos, **DIEGO SALAZAR** y **MARTINA REYES**. Hay que usar esos nombres de líder
+en el selector; con cualquier otro la API responde 404 y lista los que sí existen.
 
 ---
 
@@ -156,6 +207,16 @@ cual. Lo valioso es el multimétrico.
 
 ## Deuda conocida
 
+- **Sin autenticación.** Ver "Por dónde seguir".
+- **`ddl-auto: none` significa que nadie valida las entidades contra el esquema al
+  arrancar.** La red que queda es que los tests ejercitan todas las tablas. Es un
+  hueco real, asumido a sabiendas.
+- **`historia(periodo)` trae el mes entero a memoria.** Con cincuenta personas no
+  molesta; con la operación completa hay que paginar o agrupar en SQL.
+- **Las listas del informe de importación van serializadas en columnas de texto**,
+  no en tablas: no se pueden consultar por SQL. A sabiendas — son un reporte que
+  se lee entero y de una sola importación.
+
 - **Un alias sobre un nombre ambiguo puede quedar mal para siempre.** Confirmar
   `SOSA ANA` contra un legajo lo ata globalmente, y en otro archivo podría ser la
   otra persona. Lo correcto es que un pendiente ambiguo se resuelva por archivo y
@@ -165,10 +226,6 @@ cual. Lo valioso es el multimétrico.
   nombres a legajos es `importacion`. Consecuencia: una medición con un legajo
   fuera del padrón queda guardada y **no aparece en ningún multimétrico**, porque
   la tabla se arma recorriendo el equipo. Se ataja en `importacion`.
-- **El frontend re-deriva el tramo de arriba** en `lib/tramos.ts` aunque el
-  backend ya lo expone en `FilaResponse`. Son dos implementaciones de la misma
-  regla de negocio y se van a despegar. Quedó así porque el frontend se construyó
-  en paralelo, contra un PLAN escrito antes de esa decisión.
 - **`ManejadorDeErrores` es global pero vive en `pliego/web/`.** Funciona para
   todos los módulos; convendría moverlo a un paquete compartido.
 - **Sin autenticación**: cualquiera ve todo.
@@ -219,7 +276,30 @@ regex o clases de más de ~150 líneas, no uses heredoc.
 ## Para el que sigue
 
 1. Leé `PLAN.md`, sobre todo la sección 3 (decisiones tomadas) y la 4 (convenciones).
-2. No inventes datos de prueba a partir de ninguna planilla real. Todo sintético.
-3. Antes de dar algo por terminado, verificalo contra la API corriendo, no solo
-   con tests.
-4. Actualizá este archivo.
+2. Leé "Decisiones que se corrigieron sobre la marcha" y "Trampas conocidas al
+   escribir tests" de este archivo. Las dos listas existen porque cada punto costó
+   un fallo real, y la intuición tira para el otro lado en varios.
+3. No inventes datos de prueba a partir de ninguna planilla real. Todo sintético.
+   La planilla que originó el proyecto tiene DNI, cuentas, teléfonos de clientes y
+   sueldos; no entra al repositorio ni como fixture ni "temporalmente".
+4. Antes de dar algo por terminado, verificalo contra la API corriendo, no solo
+   con tests. Y si tocás pantalla, miralo en el navegador: es lo único que no
+   verificó nadie todavía.
+5. Actualizá este archivo.
+
+### Si vas a orquestar agentes
+
+Lo que se aprendió corriéndolos en esta sesión:
+
+- **Dos agentes no pueden compartir el módulo Maven.** Los dos corren `./mvnw test`
+  sobre el mismo `target/` y se pisan; además, mientras uno escribe, el proyecto no
+  compila y el otro no puede validar nada. Backend de a uno; el frontend sí va en
+  paralelo porque es otro directorio.
+- **Escribí el contrato antes de soltarlos.** `PLAN.md` existe por esto. Aun así,
+  el frontend duplicó el cálculo del tramo de arriba porque se construyó contra un
+  PLAN escrito antes de que el backend decidiera exponerlo. Si dos agentes van en
+  paralelo, lo que uno decida de más hay que avisárselo al otro.
+- **Dales límites de archivo explícitos** y decíles que no toquen `pom.xml` ni
+  `HANDOFF.md`: son los puntos donde el merge duele.
+- **Verificá lo que reportan.** Vinieron honestos, pero el número de tests y el
+  build se chequean en diez segundos.
