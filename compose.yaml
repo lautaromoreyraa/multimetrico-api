@@ -1,0 +1,45 @@
+# La base del multimetrico, para levantarla con un comando:
+#
+#   docker compose up -d
+#   ./mvnw spring-boot:run
+#
+# El esquema no se crea aca: lo aplica Flyway al arrancar la aplicacion. Este
+# archivo solo pone la base en pie.
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: multimetrico-mysql
+    # 3307 y no 3306: si la maquina ya tiene un MySQL instalado, el puerto de
+    # siempre esta tomado y el contenedor no levanta. La url por defecto de
+    # application.yml apunta a este puerto.
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: multimetrico
+      MYSQL_USER: multimetrico
+      MYSQL_PASSWORD: multimetrico
+      MYSQL_ROOT_PASSWORD: root
+      # UTC en el servidor tambien, no solo en el driver. DATETIME no guarda zona
+      # y los dos lados tienen que estar de acuerdo sobre en que hora escriben.
+      TZ: UTC
+    command:
+      # utf8mb4 explicito: en el padron hay apellidos con enie y con acentos, y
+      # el utf8 viejo de MySQL no es utf8 completo.
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    # La app arranca corriendo migraciones de Flyway: sin healthcheck se conecta
+    # antes de que MySQL termine de inicializarse y falla el primer arranque.
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    volumes:
+      # Volumen con nombre: el punto de todo este modulo es que los datos
+      # sobrevivan a que se apague la aplicacion, y tambien al contenedor.
+      - multimetrico-datos:/var/lib/mysql
+
+volumes:
+  multimetrico-datos:

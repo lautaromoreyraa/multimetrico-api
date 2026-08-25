@@ -29,6 +29,43 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!--
+            Flyway es el dueno del esquema y Hibernate no genera DDL nunca
+            (ddl-auto: none). Un esquema que Hibernate recrea solo se lleva puesta
+            la historia de mediciones, que es justo lo que este proyecto existe
+            para no perder. flyway-mysql es obligatorio desde Flyway 8 para
+            hablarle a MySQL.
+        -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--
+            H2 en modo de compatibilidad MySQL. Los tests corren las mismas
+            migraciones de Flyway sin Docker ni base levantada; ver
+            src/test/resources/application.yml.
+        -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!--
             Lectura de .xlsx. Los archivos de origen son planillas y no hay forma

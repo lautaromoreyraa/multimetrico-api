@@ -198,12 +198,25 @@ Librería: Apache POI para `.xlsx`.
 - JWT, contraseñas con BCrypt.
 - Un asesor que pide la fila de otro recibe `403`, nunca la fila.
 
-### 5.7 `persistencia` — POR HACER
+### 5.7 `persistencia` — HECHO
 
-- MySQL con **Flyway** para el esquema.
-- Las implementaciones en memoria se reemplazan detrás de las interfaces que ya
-  existen. El dominio no se toca.
-- `compose.yaml` con la base.
+- MySQL con **Flyway** para el esquema. `compose.yaml` levanta la base en el
+  **3307**, para no chocar con un MySQL instalado en la máquina.
+- Las implementaciones JPA entraron detrás de las interfaces que ya existían, en
+  `persistencia/`. El dominio no se tocó: los records siguen intactos y las
+  entidades JPA son clases aparte con su mapeo de ida y vuelta.
+- Los tests corren contra **H2 en modo MySQL**, con las mismas migraciones. No
+  hace falta Docker ni base levantada para `./mvnw test`.
+
+Tres cosas que no se pueden aflojar, cada una anotada en el código:
+
+- **Las mediciones se ordenan por `id`, nunca por `fecha_de_corte`.** El id es el
+  orden de carga, que es lo que desempata dos mediciones del mismo corte.
+- **Todo `DECIMAL` lleva precisión y escala** (`DECIMAL(18,6)`). Sin escala, MySQL
+  redondea a entero y los valores dejan de caer en la banda que les toca.
+- **Las claves de búsqueda van en columnas normalizadas** (`campania_clave`,
+  `legajo_clave`, `nombre_clave`) en vez de depender de la collation, que compara
+  distinto en MySQL que en H2.
 
 ### 5.8 Frontend — POR HACER
 

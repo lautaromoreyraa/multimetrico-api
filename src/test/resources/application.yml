@@ -1,0 +1,47 @@
+# Los tests corren contra H2 en modo de compatibilidad MySQL.
+#
+# Por que no Testcontainers, que seria mas fiel: necesita Docker corriendo, y en
+# esta maquina no siempre lo esta. Un `./mvnw test` que falla por un daemon
+# apagado deja de ser una senal sobre el codigo, y a la larga el equipo aprende a
+# ignorar la suite en rojo. El requisito era explicito: los tests tienen que
+# pasar sin MySQL levantado.
+#
+# Por que no volver a los repositorios en memoria bajo un perfil: entonces las
+# implementaciones JPA -que es todo lo que se agrego- no las ejecutaria ningun
+# test. La consulta que ordena las mediciones por id, que es el punto mas fragil
+# de todo esto, no la miraria nadie hasta produccion.
+#
+# H2 corre las MISMAS migraciones de Flyway que MySQL, con el mismo archivo. Eso
+# obliga a que el DDL sea portable (sin ENGINE, sin CHARSET, sin tipos propios),
+# que es una restriccion real y esta anotada en la migracion.
+#
+# Lo que se resigna, dicho claro: H2 no es MySQL. No verifica collations, ni el
+# limite de tamano de fila de InnoDB, ni el comportamiento exacto de LONGTEXT, ni
+# el manejo de zonas horarias del driver de MySQL. Por eso las diferencias que
+# podian morder se sacaron del motor y se pusieron en columnas explicitas
+# (campania_clave, legajo_clave, nombre_clave) en vez de confiar en como compara
+# cada base. Y por eso el criterio de terminado incluye levantar MySQL de verdad,
+# cargar datos, reiniciar la app y ver que siguen ahi: eso es lo que H2 no prueba.
+spring:
+  datasource:
+    # DB_CLOSE_DELAY=-1: el contexto de Spring se comparte entre clases de test y
+    # la base tiene que sobrevivir a que se cierre la ultima conexion, igual que
+    # sobrevivian los mapas en memoria. De eso depende el aislamiento por periodo
+    # que usan los tests.
+    url: jdbc:h2:mem:multimetrico;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration

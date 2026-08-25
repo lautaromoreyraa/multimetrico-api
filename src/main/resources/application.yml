@@ -2,6 +2,37 @@ spring:
   application:
     name: multimetrico-api
 
+  datasource:
+    # La base la levanta compose.yaml con un solo comando: docker compose up -d
+    # El 3307 y no el 3306: si hay un MySQL instalado en la maquina, el puerto de
+    # siempre ya esta tomado y el contenedor no levanta.
+    url: ${MULTIMETRICO_DB_URL:jdbc:mysql://localhost:3307/multimetrico?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${MULTIMETRICO_DB_USER:multimetrico}
+    password: ${MULTIMETRICO_DB_PASSWORD:multimetrico}
+
+  jpa:
+    hibernate:
+      # Flyway es el unico dueno del esquema. Hibernate no genera DDL ni siquiera
+      # para "ayudar": un update automatico al renombrar un campo se lleva puesta
+      # la tabla de mediciones, que es la historia que este proyecto existe para
+      # no perder.
+      ddl-auto: none
+    # Sin sesion abierta en la vista. El mapeo de entidad a dominio pasa entero
+    # adentro del metodo del repositorio; si algo quedara sin cargar tiene que
+    # fallar ahi, y no mas tarde adentro de un controller.
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          # DATETIME no guarda zona. Sin esto, el instante en que arranca una
+          # importacion se escribe en la hora local del servidor y se lee como si
+          # fuera UTC: el historial ordenado por fecha se corre varias horas.
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
 server:
   # 8080 es el portfolio original y 8081 el rediseno: este arranca en el siguiente
   # libre para poder tener los tres levantados a la vez.

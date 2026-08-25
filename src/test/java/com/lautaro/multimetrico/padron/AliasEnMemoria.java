@@ -5,10 +5,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Repository;
 
-@Repository
-public class AliasEnMemoria implements RegistroDeAlias {
+/**
+ * El registro de alias en memoria, hoy <b>doble de test</b>.
+ *
+ * <p>Mismo motivo que {@code MedicionEnMemoria}: no puede haber dos beans de
+ * {@link RegistroDeAlias}, así que la versión en memoria se fue al árbol de
+ * tests en vez de quedar detrás de un perfil. La usa
+ * {@code ResolutorDeNombresTest}, que prueba las cuatro estrategias de
+ * resolución sin levantar Spring.
+ */
+class AliasEnMemoria implements RegistroDeAlias {
 
     private final Map<String, String> porNombre = new ConcurrentHashMap<>();
 
