@@ -3,7 +3,7 @@
 Estado vivo del proyecto. Se actualiza cada vez que una pieza queda terminada.
 El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 
-Última actualización: 2026-08-24 (ola 1 de agentes)
+Última actualización: 2026-08-24 (ola 1 completa)
 
 ---
 
@@ -15,12 +15,12 @@ El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 | `padron` | ✅ terminado | 22 | Resolución de nombres y aprendizaje de alias |
 | `medicion` | ✅ terminado | 46 | Historia por corte; el vigente es el corte más reciente |
 | `multimetrico` | ✅ terminado | (idem) | Incluye el tramo de arriba, accionable |
-| `importacion` | ⏳ en curso | — | Agente `backend-importacion` |
+| `importacion` | ✅ terminado | 8 | Perfil configurable; ninguna fila se pierde |
 | `persistencia` | ⬜ pendiente | — | Después de que estabilicen los módulos de arriba |
 | `seguridad` | ⬜ pendiente | — | |
-| frontend | ⏳ en curso | — | Agente `frontend`, en `../multimetrico-frontend` |
+| frontend | 🟡 parcial | 0 | En `../multimetrico-frontend`. Compila; falta UI de perfiles y login |
 
-**Total actual: 94 tests, en verde.**
+**Total actual: 102 tests, en verde.**
 
 ---
 
@@ -71,6 +71,22 @@ decide la dirección); y como las bandas son `[desde, hasta)`, subiendo se alcan
 el borde y bajando hay que cruzarlo, así que la condición (`ALCANZAR` /
 `BAJAR_DE`) viaja aparte de la distancia en vez de inventar un epsilon.
 
+### `importacion`
+
+El mapeo de columnas es **configuración en tiempo de ejecución**, no código:
+nadie tiene acceso a los archivos que publica la empresa y van a cambiar. La
+inspección lee el archivo, muestra los encabezados con ejemplos, y una persona
+arma el perfil mirándolo. El sistema no adivina.
+
+Verificado contra la API con un `.xlsx` sintético: 6 filas leídas → 2 importadas,
+2 rechazadas (con número de fila y motivo), 2 pendientes (con candidatos),
+`cuadra: true`. Un archivo con la columna renombrada se rechaza entero:
+*"esperaba un encabezado 'VALOR', encontré: ASESOR, RESULTADO, LIDER"*.
+
+Los pendientes ambiguos se resuelven **por importación, no como alias global** —
+la deuda que quedaba del padrón. Resolver `SOSA ANA` a `i300` produjo su medición
+y dejó a `i400` sin ninguna.
+
 ---
 
 ## Decisiones que se corrigieron sobre la marcha
@@ -94,6 +110,13 @@ fecha de corte.
 lee como "no hay datos cargados" y manda a buscar el problema al lado equivocado.
 El mensaje lista los líderes que sí existen.
 
+**`@Async` no hacía nada.** `recibir()` llamaba a `procesar()` dentro del mismo
+bean, y esa autoinvocación esquiva el proxy de Spring: la anotación se leía como
+si funcionara y corría sincrónico. El procesamiento vive ahora en
+`ProcesadorDeImportaciones`, que se inyecta y por lo tanto sí pasa por el proxy.
+**Si alguien vuelve a mover ese método adentro del servicio, el asincronismo
+desaparece en silencio.**
+
 **El motor de incentivos se cayó del alcance.** Al principio el proyecto apuntaba a
 calcular los importes. No va: llegan calculados desde la empresa y se adjuntan tal
 cual. Lo valioso es el multimétrico.
@@ -111,6 +134,10 @@ cual. Lo valioso es el multimétrico.
   nombres a legajos es `importacion`. Consecuencia: una medición con un legajo
   fuera del padrón queda guardada y **no aparece en ningún multimétrico**, porque
   la tabla se arma recorriendo el equipo. Se ataja en `importacion`.
+- **El frontend re-deriva el tramo de arriba** en `lib/tramos.ts` aunque el
+  backend ya lo expone en `FilaResponse`. Son dos implementaciones de la misma
+  regla de negocio y se van a despegar. Quedó así porque el frontend se construyó
+  en paralelo, contra un PLAN escrito antes de esa decisión.
 - **`ManejadorDeErrores` es global pero vive en `pliego/web/`.** Funciona para
   todos los módulos; convendría moverlo a un paquete compartido.
 - **Sin persistencia**: todo en memoria.
@@ -126,9 +153,13 @@ los repositorios en memoria. Las mediciones se acumulan y un pliego cargado no s
 puede pisar. **Cada clase de test tiene que usar su propio período** (`YearMonth`)
 para no chocar con las demás. Ya rompió tests dos veces.
 
-**El shell de este entorno es Git Bash sobre Windows** y los heredocs largos a
-veces se comen las barras invertidas. Si escribís Java con regex, verificá el
-archivo después de escribirlo.
+**El aislamiento por período hace falta por test, no solo por clase.** Dos métodos
+de la misma clase que carguen mediciones del mismo asesor y período se ven entre
+sí. `ImportacionServiceTest` usa un mes distinto en cada `@BeforeEach`.
+
+**El shell de este entorno es Git Bash sobre Windows** y los heredocs largos se
+comen las barras invertidas y truncan los archivos largos. Para escribir Java con
+regex o clases de más de ~150 líneas, no uses heredoc.
 
 ---
 
