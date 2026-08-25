@@ -1,7 +1,9 @@
 package com.lautaro.multimetrico.pliego.web;
 
 import com.lautaro.multimetrico.pliego.PliegoYaCargadoException;
+import com.lautaro.multimetrico.pliego.domain.Metrica;
 import com.lautaro.multimetrico.pliego.validacion.PliegoInvalidoException;
+import com.lautaro.multimetrico.pliego.validacion.Violacion;
 import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -22,18 +24,44 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ManejadorDeErrores {
 
-    public record ErrorResponse(Instant momento, int estado, String mensaje, List<String> detalles) {
+    public record ErrorResponse(
+            Instant momento,
+            int estado,
+            String mensaje,
+            List<String> detalles,
+            List<ViolacionResponse> violaciones) {
 
         static ErrorResponse de(HttpStatus estado, String mensaje, List<String> detalles) {
-            return new ErrorResponse(Instant.now(), estado.value(), mensaje, detalles);
+            return new ErrorResponse(Instant.now(), estado.value(), mensaje, detalles, null);
+        }
+    }
+
+    /**
+     * Una violación con sus partes separadas.
+     *
+     * <p>Existe porque aplastarla a texto perdía información que el cliente
+     * necesita. La pantalla de carga tiene que marcar en rojo la escala culpable,
+     * y con un `"TMO: las bandas se pisan…"` la única forma de saber cuál es
+     * volver a partir el string por el prefijo — reconstruir a mano algo que el
+     * servidor ya tenía estructurado y tiró.
+     *
+     * <p>El texto sigue viajando en {@code detalles} para quien solo quiera
+     * mostrarlo, así que agregar esto no rompe a nadie.
+     */
+    public record ViolacionResponse(Metrica metrica, Violacion.Tipo tipo, String mensaje) {
+
+        static ViolacionResponse de(Violacion violacion) {
+            return new ViolacionResponse(violacion.metrica(), violacion.tipo(), violacion.mensaje());
         }
     }
 
     @ExceptionHandler(PliegoInvalidoException.class)
     public ResponseEntity<ErrorResponse> pliegoInvalido(PliegoInvalidoException e) {
         List<String> detalles = e.violaciones().stream().map(Object::toString).toList();
-        return ResponseEntity.unprocessableEntity()
-                .body(ErrorResponse.de(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), detalles));
+        List<ViolacionResponse> violaciones = e.violaciones().stream().map(ViolacionResponse::de).toList();
+
+        return ResponseEntity.unprocessableEntity().body(new ErrorResponse(
+                Instant.now(), HttpStatus.UNPROCESSABLE_ENTITY.value(), e.getMessage(), detalles, violaciones));
     }
 
     @ExceptionHandler(PliegoYaCargadoException.class)
