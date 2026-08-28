@@ -37,3 +37,19 @@ server:
   # 8080 es el portfolio original y 8081 el rediseno: este arranca en el siguiente
   # libre para poder tener los tres levantados a la vez.
   port: 8082
+
+# Lo unico ajustable del procesamiento de importaciones. Los valores de abajo son
+# los que aplica PropiedadesDeImportacion por defecto; estan escritos igual para
+# que se vea que existen, porque el dia que un archivo tarde de mas, subirlos es
+# editar esta seccion y no tocar codigo.
+#
+# hilos: cuantas importaciones se procesan a la vez. Leer una planilla entera con
+#   POI la carga en memoria, asi que subirlo es la forma mas rapida de quedarse
+#   sin heap con archivos grandes.
+# cola: cuantas esperan turno. Tiene tope a proposito: sin tope una avalancha de
+#   cargas se acumula en silencio hasta reventar; con tope, la que sobra falla de
+#   entrada y se ve.
+multimetrico:
+  importacion:
+    hilos: 2
+    cola: 50
