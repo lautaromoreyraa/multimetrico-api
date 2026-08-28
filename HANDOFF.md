@@ -3,7 +3,8 @@
 Estado vivo del proyecto. Se actualiza cada vez que una pieza queda terminada.
 El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 
-Última actualización: 2026-08-25, madrugada. Todo el alcance salvo seguridad.
+Última actualización: 2026-08-28. **El MVP anda de punta a punta y alguien por
+fin lo miró en el navegador.** Falta seguridad y nada más.
 
 ---
 
@@ -11,16 +12,115 @@ El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 
 | Módulo | Estado | Tests | Notas |
 |---|---|---|---|
-| `pliego` | ✅ terminado | 26 | Dominio, motor de tramos, validación y API |
-| `padron` | ✅ terminado | 22 | Resolución de nombres y aprendizaje de alias |
+| `pliego` | ✅ terminado | 30 | Motor de tramos, validación y API |
+| `padron` | ✅ terminado | 24 | Resolución de nombres y aprendizaje de alias |
 | `medicion` | ✅ terminado | 46 | Historia por corte; el vigente es el corte más reciente |
 | `multimetrico` | ✅ terminado | (idem) | Incluye el tramo de arriba, accionable |
 | `importacion` | ✅ terminado | 8 | Perfil configurable; ninguna fila se pierde |
-| `persistencia` | ✅ terminado | 23 | MySQL + Flyway; los tests corren contra H2 en modo MySQL |
-| `seguridad` | ⬜ pendiente | — | |
-| frontend | ✅ terminado | **0** | En `../multimetrico-frontend`. Cinco pantallas, sin mocks. Sin tests y sin revisión visual |
+| `persistencia` | ✅ terminado | 24 | MySQL + Flyway; los tests corren contra H2 en modo MySQL |
+| `seguridad` | ⬜ pendiente | — | Lo único que falta del alcance |
+| frontend | ✅ terminado | **0** | En `../multimetrico-frontend`. Cinco pantallas, sin mocks. Sin tests, pero **ya revisado en el navegador** |
 
-**Total actual: 125 tests, en verde.**
+**Total actual: 134 tests, en verde.**
+
+## El MVP, andando
+
+Las cinco pantallas se abrieron en Chrome contra la API corriendo y la base de
+verdad. Ninguna tira error de consola y las cinco muestran datos reales del
+backend.
+
+Para dejarlo así de nuevo, en este orden:
+
+```bash
+docker compose up -d               # MySQL en el 3307
+./mvnw spring-boot:run             # la API en el 8082
+node scripts/datos-de-ejemplo.mjs  # el mes cargado
+cd ../multimetrico-frontend && npm run dev
+```
+
+**`scripts/datos-de-ejemplo.mjs` es nuevo y es la pieza que faltaba para poder
+mirar el proyecto.** La base del compose puede tener datos viejos de alguna
+verificación anterior —tenía un pliego de `2026-12 / CONVERGENTES` y otro de
+`2026-08 / CONVERGENTES`—, pero el frontend abre en `2026-08 / RESIDENCIAL`, así
+que la primera pantalla daba 404 y parecía rota. El script carga ese período
+completo: el pliego sano, quince asesores en dos equipos y las cinco métricas.
+
+Lo que carga está pensado para que la pantalla muestre algo: los valores se
+sortean con un pseudoazar **sembrado por legajo**, así que dos corridas dan los
+mismos números y la captura de ayer sigue siendo comparable. Y deja huecos a
+propósito —dos personas sin FCR, una sin baja convergente, y dos que quedaron
+afuera del último archivo de NPS— porque son las dos situaciones que la tabla
+existe para hacer visibles. Con todo completo, la pantalla no demuestra nada.
+
+Ojo con dos cosas que costaron un rato:
+
+- **Docker Desktop tiene que estar levantado**, no solo instalado. Sin él,
+  `docker compose up` falla con un error de named pipe que no dice eso.
+- **El `localStorage` del frontend se acuerda del equipo elegido.** La clave es
+  `multimetrico.contexto`. Una sesión vieja había dejado `lider: "MARTINA REYES"`
+  y la primera pantalla abría filtrada en ocho de los quince asesores, que se lee
+  como si faltara gente. El valor por defecto es `""` —toda la operación— y está
+  bien; si al abrir aparece un equipo elegido, es la memoria del navegador, no un
+  bug.
+
+---
+
+## La estructura del backend cambió
+
+El proyecto pasó de estar organizado **por módulo** (`pliego/`, `padron/`,
+`medicion/`, `multimetrico/`, `importacion/`, `persistencia/`, cada uno con su
+`domain/` y su `web/`) a estar organizado **por capa**:
+
+```
+config/       properties, auditoría JPA, el conversor de período
+domain/       las entidades JPA
+enumeration/  los enums del dominio
+repository/   las interfaces de Spring Data
+dto/          records agrupados por caso de uso, en subcarpetas
+mapper/       interfaz + impl/, escritos a mano
+service/      interfaz + impl/, una subcarpeta por servicio
+controller/   los REST controllers
+util/         PeriodoUtil, DecimalUtil, NumeroUtil, JsonUtil, NombreNormalizado
+exception/    las excepciones y el manejador global
+```
+
+**Lo que se fue con el cambio.** Era una arquitectura hexagonal: records de
+dominio inmutables, puertos `*Repository` propios y adaptadores `*EnBase` que
+traducían entidad ↔ dominio. Ahora hay un modelo único: la entidad JPA **es** el
+dominio, `repository/` son `JpaRepository` directos y los adaptadores no existen.
+Los cálculos que vivían adentro de los records —evaluar contra el pliego,
+desempatar la medición vigente, armar la fila y su tramo de arriba— se mudaron a
+los `*ServiceImpl`, y los resultados de esos cálculos son records planos en
+`dto/`.
+
+**El contrato HTTP no se movió.** Se verificó contra la base con los datos que ya
+estaban cargados desde antes del cambio: el `GET /api/pliegos` devuelve el mismo
+JSON byte a byte, y el multimétrico de equipo sale con su resumen, sus cortes por
+métrica y el `detalle` del tramo de arriba redactado igual. El frontend no
+necesitó tocarse.
+
+Dos respuestas sí cambiaron, a propósito:
+
+- Una planilla que no coincide con su perfil ahora devuelve **422 con cuerpo de
+  error** en `/api/perfiles/inspeccion`, donde antes se escapaba como 500 pelado.
+- `POST /api/pliegos` normaliza los decimales igual que el `GET`. Antes el POST
+  devolvía `80.0` y el GET `80` para el mismo pliego; ahora los dos dicen `80`.
+
+### Tres cosas que costaron y conviene no repetir
+
+1. **`MultipleBagFetchException`.** Con `open-in-view: false` la entidad viaja
+   hasta el mapper con la transacción ya cerrada, así que las lecturas de pliego
+   y padrón llevan `@EntityGraph`. Hibernate se niega a traer dos *bags* —listas
+   sin columna de índice— en la misma consulta, **incluso cuando uno cuelga del
+   otro**. Por eso `Pliego.escalas` y `Escala.bandas` son `Set` y no `List`.
+2. **La duplicación silenciosa.** Aun sin la excepción, el `join` contra las
+   bandas multiplica las filas de escala. Con listas, el `alcanceMaximo` —que es
+   la suma de los pesos— pasaba de 10,5 a 28 sin ningún error a la vista. El
+   `Set` lo deduplica solo, y es la razón de peso de las dos.
+3. **`BigDecimal.equals` mira la escala.** Un `61.0` guardado vuelve como `61`
+   porque `DecimalUtil` le saca los ceros de más. Los tests tienen que comparar
+   con `isEqualByComparingTo`, nunca por igualdad — es la misma trampa contra la
+   que el dominio viene advirtiendo desde el principio.
 
 ---
 
@@ -58,25 +158,11 @@ por endpoint**: un asesor que pide la fila de otro recibe 403, nunca la fila. En
 el frontend, "Mi multimétrico" tiene hoy un selector de asesor que hay que
 reemplazar por el legajo del token.
 
-**2. Dos fallas conocidas del backend, chicas y con dueño claro.**
+**2. El frontend no tiene un solo test.** No hay infraestructura montada. Es lo
+más grande que queda después de seguridad.
 
-- **`Metrica.Unidad` no la expone ninguna respuesta.** El enum lo tiene —TMO en
-  `SEGUNDOS`, las otras cuatro en `PORCENTAJE`— pero ni `PliegoResponse.EscalaResponse`
-  ni `FilaResponse.CeldaResponse` lo mandan, así que el frontend mantiene un mapa
-  propio en `src/lib/format.ts` que duplica algo que el servidor ya sabe. Agregarlo
-  a esos dos DTOs y borrar el mapa.
-- **`cuadra: true` en una importación `RECHAZADA`.** Un informe rechazado tiene
-  todo en cero y cero más cero cierra, así que el campo que existe para responder
-  "¿entró todo?" dice que sí cuando no entró nada. El frontend lo esquiva mirando
-  `estado`, pero es una fea de la API.
-
-**3. Nadie miró los píxeles de la versión actual del frontend.** El agente que la
-terminó no tenía la extensión de Chrome conectada: verificó cada payload contra
-los tipos y el build pasa, pero las pantallas cambiaron mucho desde la última vez
-que alguien las vio renderizadas. **Es la revisión pendiente más barata y la más
-probable de encontrar algo.**
-
-**4. El frontend no tiene un solo test.** No hay infraestructura montada.
+**3. La deuda de la lista de abajo**, que sigue toda en pie salvo las tres que se
+tacharon.
 
 ---
 
@@ -90,6 +176,30 @@ en el selector; con cualquier otro la API responde 404 y lista los que sí exist
 ---
 
 ## Hecho
+
+### Cerrado en esta sesión
+
+**Las dos fallas conocidas del backend, arregladas y con test.**
+
+- **`Metrica.Unidad` ahora viaja en la API.** La agregaron
+  `PliegoResponse.EscalaResponse` y `FilaResponse.CeldaResponse`, y el mapa de
+  métrica a unidad que el frontend mantenía de memoria en `src/lib/format.ts` se
+  borró: `conUnidad` ahora recibe la `Unidad` en vez de deducirla de la métrica.
+  Verificado contra la API corriendo —TMO sale `SEGUNDOS`, las otras cuatro
+  `PORCENTAJE`— y en el navegador, donde el TMO se lee "616 s" y no "616%".
+- **`cuadra` es `false` en una importación `RECHAZADA`.** La corrección vive en
+  `ImportacionMapperImpl` y **no** en `Informe`: el invariante del informe sigue
+  siendo cierto —las tres bolsas suman las filas leídas, y en una rechazada las
+  cuatro cifras son cero—, lo que se corrige es la lectura que publica la API.
+  Son dos preguntas distintas y el test nuevo afirma las dos.
+
+**La revisión visual, hecha.** Las cinco pantallas se abrieron en Chrome contra la
+API corriendo. Encontró una sola cosa real: **la tabla del equipo imprimía el
+nombre crudo del enum** en los encabezados —`ACTIVIDAD_COMERCIAL`,
+`BAJA_CONVERGENTE`—. `nombreDeMetrica()` existía en `format.ts` y lo usaban las
+otras cuatro pantallas; la única que no era justo aquella donde el nombre es el
+rótulo de la columna. Es exactamente la clase de cosa que ningún test de tipos
+encuentra y que se ve en dos segundos mirando.
 
 ### `pliego`
 
@@ -207,7 +317,15 @@ cual. Lo valioso es el multimétrico.
 
 ## Deuda conocida
 
-- **Sin autenticación.** Ver "Por dónde seguir".
+- **Sin autenticación.** Ver "Por dónde seguir". Es lo único del alcance
+  original que queda sin hacer.
+- ~~`Metrica.Unidad` no la expone ninguna respuesta~~ — resuelto, ver "Cerrado en
+  esta sesión".
+- ~~`cuadra: true` en una importación `RECHAZADA`~~ — resuelto, ídem.
+- **El frontend guarda el recorte en `localStorage`** bajo
+  `multimetrico.contexto`. Es deliberado —un F5 no devuelve a un supervisor al
+  mes por defecto—, pero significa que **lo que ve alguien al abrir depende de su
+  navegador**. Si la primera pantalla aparece filtrada por un equipo, es eso.
 - **`ddl-auto: none` significa que nadie valida las entidades contra el esquema al
   arrancar.** La red que queda es que los tests ejercitan todas las tablas. Es un
   hueco real, asumido a sabiendas.
@@ -270,6 +388,19 @@ sí. `ImportacionServiceTest` usa un mes distinto en cada `@BeforeEach`.
 **El shell de este entorno es Git Bash sobre Windows** y los heredocs largos se
 comen las barras invertidas y truncan los archivos largos. Para escribir Java con
 regex o clases de más de ~150 líneas, no uses heredoc.
+
+**Y tampoco pases por el shell contenido con `${...}` o con backticks.** Un
+`node -e "..."` entre comillas dobles deja que bash expanda las dos cosas antes
+de que node las vea: una plantilla de TypeScript quedó como `` ` s` `` —con la
+interpolación comida— y la pantalla mostró "%" en vez de "616 s". Compiló y pasó
+el `tsc` igual, porque sintácticamente es válido. Para editar archivos con
+plantillas, markdown con backticks o regex, **escribí el script a un archivo y
+corrélo**, no lo pases inline.
+
+**Los finales de línea del repo están mezclados.** `src/types.ts` y varios `.tsx`
+son CRLF; los `.java` son LF. Un reemplazo exacto escrito con `\n` no engancha en
+los CRLF y falla sin decir por qué. Normalizá a LF para buscar y devolvé el
+archivo a lo que era al escribir, o el diff se llena de líneas que no cambiaron.
 
 ---
 

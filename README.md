@@ -52,9 +52,27 @@ coinciden con el mejor tramo, métricas duplicadas.
 ## Correr
 
 ```bash
-./mvnw spring-boot:run   # :8082
-./mvnw test              # 48 tests
+docker compose up -d               # MySQL en el 3307
+./mvnw spring-boot:run             # la API en el 8082
+node scripts/datos-de-ejemplo.mjs  # un mes cargado, para poder mirar algo
+
+cd ../multimetrico-frontend && npm run dev   # la pantalla, en el 5174
 ```
+
+`./mvnw test` corre los 134 tests y **no necesita la base levantada**: usan H2 en
+modo de compatibilidad MySQL con las mismas migraciones de Flyway. La aplicación
+sí la necesita.
+
+El tercer comando es el que separa ver la pantalla de ver un 404: la primera
+pantalla es la tabla del equipo entero, y sin pliego, padrón y mediciones no hay
+nada que mostrar. Carga un mes sintético completo —quince asesores, dos líderes,
+las cinco métricas— con tres huecos y un corte atrasado **a propósito**, que son
+las dos situaciones que la tabla existe para hacer visibles. Correrlo dos veces
+es inofensivo.
+
+El contenedor puede existir apagado de una sesión anterior: si `compose up`
+protesta que el nombre está en uso, `docker start multimetrico-mysql` lo revive
+**con sus datos**. `docker compose down -v` lo borra de cero.
 
 ## Endpoints
 
@@ -137,12 +155,21 @@ POST /api/padrones/2026-08/resolucion
 
 ## Estado
 
-Implementado: dominio del pliego con su motor de tramos y validación, y el padrón
-con resolución de nombres y aprendizaje de alias. 48 tests.
+**El MVP anda de punta a punta.** Pliego, padrón, mediciones con su historia,
+multimétrico de equipo y de asesor, importación por perfil configurable y
+persistencia en MySQL con Flyway. 134 tests en verde, y las cinco pantallas del
+frontend verificadas en el navegador contra la API corriendo.
 
-Lo que sigue: importación de las planillas semanales por perfil configurable,
-persistencia con JPA y Flyway, y autenticación para que el asesor vea su fila y el
-supervisor su equipo.
+La primera pantalla es la tabla del equipo entero: una fila por asesor, una
+columna por métrica, la bonificación pegada al nombre y la fecha de corte en cada
+encabezado. Una métrica sin medición se marca faltante y **no se rellena con
+cero**, así que un total incompleto se ve incompleto.
+
+**Lo que falta es autenticación** (`PLAN.md` §5.6). Hoy cualquiera ve la fila de
+cualquiera, en la API y en la pantalla, y el selector de asesor de "Mi
+multimétrico" tendría que ser el legajo del token. El control tiene que ser **por
+fila y no por endpoint**: un asesor que pide la fila de otro recibe 403, nunca la
+fila.
 
 ## Sobre los datos
 
