@@ -28,6 +28,15 @@ public interface PadronService {
     List<String> lideres(YearMonth periodo);
 
     /**
+     * Saca a una persona de la nómina del mes.
+     *
+     * <p>Deja de aparecer en el multimétrico y en los incentivos, que se arman
+     * recorriendo el padrón. Sus mediciones e importes quedan guardados: si vuelve
+     * a cargarse, vuelven con ella.
+     */
+    Asesor quitarAsesor(YearMonth periodo, String legajo);
+
+    /**
      * Cruza una lista de nombres contra el padrón del período.
      *
      * <p>Es una operación de solo lectura, pensada para correr antes de importar:

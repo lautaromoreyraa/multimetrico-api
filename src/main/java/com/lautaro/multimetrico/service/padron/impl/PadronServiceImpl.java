@@ -73,6 +73,18 @@ public class PadronServiceImpl implements PadronService {
     }
 
     @Override
+    @Transactional
+    public Asesor quitarAsesor(YearMonth periodo, String legajo) {
+        Padron padron = buscar(periodo);
+        Asesor quitado = padron.quitar(legajo);
+
+        // El save es lo que dispara el orphanRemoval: sin él, la lista queda
+        // modificada en memoria y la fila sigue en la base.
+        padrones.save(padron);
+        return quitado;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Resolucion resolver(YearMonth periodo, List<String> nombres) {
         return resolutor.resolver(buscar(periodo), nombres);

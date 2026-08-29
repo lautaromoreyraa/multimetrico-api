@@ -105,6 +105,32 @@ public class Padron {
     }
 
     /**
+     * Saca a una persona de la nómina del mes.
+     *
+     * <p>Es una baja de verdad y no una marca: {@code orphanRemoval} borra la
+     * fila. Está bien que así sea porque el padrón <b>es</b> reemplazable —a
+     * diferencia del pliego, que no se pisa nunca—: es una lista que cambia
+     * dentro del mes, y volver a cargarla ya la reescribía entera. Esto sólo
+     * evita tener que rehacer las cincuenta filas para corregir una.
+     *
+     * <p><b>Lo que queda:</b> las mediciones y los incentivos de esa persona
+     * siguen guardados. No se borran en cascada a propósito — son hechos
+     * históricos y el padrón no es su dueño—, simplemente dejan de aparecer,
+     * porque el multimétrico se arma recorriendo el padrón. Si la persona vuelve
+     * a cargarse, sus números vuelven con ella.
+     *
+     * @return el asesor que se sacó
+     * @throws java.util.NoSuchElementException si ese legajo no está en el padrón
+     */
+    public Asesor quitar(String legajo) {
+        Asesor asesor = porLegajo(legajo).orElseThrow(() -> new java.util.NoSuchElementException(
+                "El legajo %s no está en el padrón de %s".formatted(legajo, periodo)));
+
+        asesores.remove(asesor);
+        return asesor;
+    }
+
+    /**
      * El equipo de un líder.
      *
      * <p>Esto es el paso que hoy se hace a mano: abrir el archivo con todos los

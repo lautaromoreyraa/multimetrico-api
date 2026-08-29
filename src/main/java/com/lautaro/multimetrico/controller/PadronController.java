@@ -18,6 +18,7 @@ import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -79,6 +80,22 @@ public class PadronController {
      * <p>Pensado para correr antes de subir: deja ver qué filas van a empalmar y
      * cuáles no, mientras todavía se puede arreglar.
      */
+    /**
+     * Saca a una persona de la nómina del mes.
+     *
+     * <p>Deja de aparecer en el multimétrico y en los incentivos. Sus mediciones e
+     * importes quedan guardados: si vuelve a cargarse, vuelven con ella.
+     *
+     * <p>Es un DELETE, así que pide cuenta de administrador — lo decide
+     * {@code SeguridadConfig} por el verbo, no una anotación acá.
+     */
+    @DeleteMapping("/{periodo}/asesores/{legajo}")
+    public AsesorResponse quitar(
+            @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
+            @PathVariable String legajo) {
+        return mapper.aResponse(servicio.quitarAsesor(periodo, legajo));
+    }
+
     @PostMapping("/{periodo}/resolucion")
     public ResolucionResponse resolver(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,

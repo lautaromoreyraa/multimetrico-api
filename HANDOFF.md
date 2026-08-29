@@ -29,9 +29,10 @@ intuición sigue tirando para el otro lado.
 | `importacion` | ✅ | 8 | Perfil configurable; ninguna fila se pierde |
 | `persistencia` | ✅ | 24 | MySQL + Flyway; los tests corren contra H2 en modo MySQL |
 | `seguridad` | ✅ | 16 | JWT. Leer es público, escribir es de ADMIN |
+| `incentivos` | ✅ | 7 | Importes importados de una planilla. **No se calculan** |
 | frontend | ✅ | **0** | `../multimetrico-frontend`. Cinco pantallas, sin mocks, revisadas en el navegador. Sin un solo test |
 
-**150 tests, en verde.**
+**162 tests, en verde.**
 
 ## Los dos repos
 
@@ -60,7 +61,7 @@ node scripts/datos-de-ejemplo.mjs  # los datos, sin esto la pantalla da 404
 cd ../multimetrico-frontend && npm run dev   # la pantalla, en el 5174
 ```
 
-`./mvnw test` corre los 150 y **no necesita la base levantada**: usan H2 en modo
+`./mvnw test` corre los 162 y **no necesita la base levantada**: usan H2 en modo
 de compatibilidad MySQL con las mismas migraciones de Flyway. La aplicación sí la
 necesita.
 
@@ -211,6 +212,41 @@ que no hay una consulta por request. La contracara: si a alguien le cambian el r
 o el equipo, su token viejo sigue diciendo lo anterior hasta que vence (ocho
 horas). Es un riesgo asumido; si hace falta revocar en el momento, `Credencial`
 pasa a leerse de la base.
+
+### Los incentivos no se calculan
+
+Los importes **llegan resueltos desde la empresa** y se adjuntan tal cual. Es la
+decisión más vieja del proyecto —el motor de incentivos se cayó del alcance al
+principio— y volvió como dato importado, que es lo que siempre debió ser.
+
+No hay ninguna regla que derive un importe de un alcance, y no conviene
+agregarla: significaría que el sistema dice un número y la liquidación dice otro,
+y que nadie sepa cuál creer. Consecuencia práctica: **no se puede "recalcular" un
+incentivo**. Si está mal, se corrige el archivo y se vuelve a cargar.
+
+> **El importe que falta no es cero, y acá es al revés que en el multimétrico.**
+> Una métrica sin archivo bonifica cero porque hay una regla del pliego que se
+> puede aplicar igual. Un importe no tiene regla: llega o no llega. Por eso el
+> faltante se muestra vacío y **no entra en el total del equipo**.
+
+La lista igual muestra a todo el padrón, como el multimétrico: quien no vino en la
+planilla aparece con el importe vacío en vez de desaparecer.
+
+**Un nombre ambiguo se rechaza nombrando a los candidatos**, en vez de ir a una
+bolsa de pendientes como en la importación de métricas. Es más pobre a propósito;
+lo que no se resigna es que la fila desaparezca en silencio. Si el archivo de
+incentivos empieza a traer ambiguos seguido, ahí conviene el flujo completo.
+
+### La nómina se puede corregir de a una
+
+Sacar a alguien del padrón del mes ya no obliga a recargar las cincuenta filas.
+Es una baja de verdad —`orphanRemoval` borra la fila— y está bien que lo sea: el
+padrón **es** reemplazable, a diferencia del pliego.
+
+**Sus mediciones e importes quedan guardados.** No se borran en cascada porque son
+hechos históricos y el padrón no es su dueño; simplemente dejan de aparecer,
+porque las tablas se arman recorriendo el padrón. Si la persona vuelve a
+cargarse, sus números vuelven con ella.
 
 ### Un corte por métrica, varias cargas por mes
 
