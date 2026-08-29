@@ -177,6 +177,37 @@ class SeguridadTest {
                 .andExpect(status().isOk());
     }
 
+    // ── el despacho de error no puede disfrazarse de 401 ─────────────────────
+
+    /**
+     * Un GET público al que le falta un parámetro devuelve 400, no 401.
+     *
+     * <p>Devolvía 401 "hace falta iniciar sesión". La excepción no tenía
+     * manejador, salía por el despacho a {@code /error}, y ese despacho volvía a
+     * pasar por la cadena de seguridad ya sin contexto. El mensaje mandaba a
+     * buscar el problema al lado exactamente equivocado: la sesión estaba bien y
+     * lo que faltaba era un {@code ?campania=}.
+     */
+    @Test
+    void aUnGetPublicoLeFaltaUnParametroYDice400() throws Exception {
+        mvc().perform(get("/api/multimetrico/" + PERIODO))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje", org.hamcrest.Matchers.containsString("campania")));
+    }
+
+    /** Lo mismo autenticado: subir sin adjuntar archivo dice eso, no 401. */
+    @Test
+    void aUnPostAutenticadoLeFaltaElArchivoYDice400() throws Exception {
+        mvc().perform(post("/api/importaciones").with(como(admin())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void unPeriodoConFormatoInvalidoDice400() throws Exception {
+        mvc().perform(get("/api/multimetrico/agosto").param("campania", CAMPANIA))
+                .andExpect(status().isBadRequest());
+    }
+
     // ── el login ─────────────────────────────────────────────────────────────
 
     @Test

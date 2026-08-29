@@ -5,6 +5,10 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -86,6 +90,64 @@ public class ManejadorGlobalDeErrores {
     public ResponseEntity<ErrorResponse> argumentoInvalido(IllegalArgumentException e) {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.de(HttpStatus.BAD_REQUEST, e.getMessage(), List.of()));
+    }
+
+    /**
+     * Falta un parámetro obligatorio.
+     *
+     * <p>Sin este manejador la excepción no la atiende nadie, sale por el
+     * despacho a {@code /error} y termina como un 401 que manda a iniciar sesión
+     * cuando lo que faltaba era un {@code ?campania=}. Ver {@code SeguridadConfig}.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> faltaUnParametro(MissingServletRequestParameterException e) {
+        return ResponseEntity.badRequest().body(ErrorResponse.de(
+                HttpStatus.BAD_REQUEST,
+                "Falta el parámetro '%s'.".formatted(e.getParameterName()),
+                List.of("Se esperaba un %s en la consulta.".formatted(e.getParameterType()))));
+    }
+
+    /**
+     * Falta el archivo en una carga.
+     *
+     * <p>Es el mismo caso que el anterior pero para {@code multipart}, y es el
+     * que más se nota: subir sin adjuntar nada tiene que decir eso, no pedir que
+     * alguien vuelva a entrar.
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorResponse> faltaElArchivo(MissingServletRequestPartException e) {
+        return ResponseEntity.badRequest().body(ErrorResponse.de(
+                HttpStatus.BAD_REQUEST,
+                "Falta el archivo '%s' en la carga.".formatted(e.getRequestPartName()),
+                List.of("La petición tiene que ser multipart e incluir esa parte.")));
+    }
+
+    /**
+     * La carga no vino como multipart.
+     *
+     * <p>Es la más ancha de las tres y por eso va última en la práctica:
+     * {@link MissingServletRequestPartException} cubre "es multipart pero falta
+     * la parte" y ésta cubre "no es multipart en absoluto", que es lo que pasa
+     * cuando alguien le manda JSON al endpoint de importación.
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponse> cargaMalArmada(MultipartException e) {
+        return ResponseEntity.badRequest().body(ErrorResponse.de(
+                HttpStatus.BAD_REQUEST,
+                "La carga tiene que enviar el archivo como multipart.",
+                List.of("Falta el archivo, o la petición se mandó como JSON.")));
+    }
+
+    /**
+     * Un parámetro que no se puede convertir: un período que no es aaaa-mm, por
+     * ejemplo.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> parametroConFormatoInvalido(MethodArgumentTypeMismatchException e) {
+        return ResponseEntity.badRequest().body(ErrorResponse.de(
+                HttpStatus.BAD_REQUEST,
+                "El valor de '%s' no tiene el formato esperado.".formatted(e.getName()),
+                List.of("Los períodos van como aaaa-mm y las fechas como aaaa-mm-dd.")));
     }
 
     /**

@@ -3,6 +3,7 @@ package com.lautaro.multimetrico.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lautaro.multimetrico.dto.error.ErrorResponse;
 import com.lautaro.multimetrico.enumeration.Rol;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
@@ -88,6 +89,16 @@ public class SeguridadConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(rutas -> rutas
+                        // El despacho a /error no es un recurso: es Spring
+                        // renderizando el error de una request que YA pasó por
+                        // acá. Sin esta línea, cualquier excepción que no tenga
+                        // manejador termina en un 401 que dice "iniciá sesión",
+                        // incluso en un GET público y aunque el token esté bien.
+                        //
+                        // Pasaba de verdad: pedir /api/multimetrico/2026-08 sin
+                        // el parámetro campania devolvía 401 en vez de 400.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
+
                         .requestMatchers(PUBLICAS).permitAll()
 
                         // El orden importa y es la parte fácil de romper: Spring

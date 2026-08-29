@@ -27,10 +27,10 @@ intuición sigue tirando para el otro lado.
 | `multimetrico` | ✅ | (idem) | Incluye el tramo de arriba, accionable |
 | `importacion` | ✅ | 8 | Perfil configurable; ninguna fila se pierde |
 | `persistencia` | ✅ | 24 | MySQL + Flyway; los tests corren contra H2 en modo MySQL |
-| `seguridad` | ✅ | 13 | JWT. Leer es público, escribir es de ADMIN |
+| `seguridad` | ✅ | 16 | JWT. Leer es público, escribir es de ADMIN |
 | frontend | ✅ | **0** | `../multimetrico-frontend`. Cinco pantallas, sin mocks, revisadas en el navegador. Sin un solo test |
 
-**147 tests, en verde.**
+**150 tests, en verde.**
 
 ## Los dos repos
 
@@ -59,7 +59,7 @@ node scripts/datos-de-ejemplo.mjs  # los datos, sin esto la pantalla da 404
 cd ../multimetrico-frontend && npm run dev   # la pantalla, en el 5174
 ```
 
-`./mvnw test` corre los 147 y **no necesita la base levantada**: usan H2 en modo
+`./mvnw test` corre los 150 y **no necesita la base levantada**: usan H2 en modo
 de compatibilidad MySQL con las mismas migraciones de Flyway. La aplicación sí la
 necesita.
 
@@ -182,6 +182,13 @@ antes de leer nada. Está anotado en el javadoc de `ControlDeAcceso`.
 > `/api/usuarios/**` tiene que ir **antes** del `permitAll` de los GET. Cuando
 > estaban al revés, listar usuarios quedaba abierto. Hay un test que lo afirma, y
 > es el que lo encontró.
+
+> **El despacho a `/error` está permitido, y tiene que seguir estándolo.** No es
+> un recurso: es Spring renderizando el error de una request que ya pasó por la
+> cadena. Sin esa línea, cualquier excepción sin manejador sale como un 401 que
+> dice "iniciá sesión" —incluso en un GET público y con el token bien—, y manda a
+> buscar el problema al lado equivocado. Pasaba de verdad con un `?campania=`
+> faltante.
 
 **Tres decisiones que parecen de más y no lo son:**
 
