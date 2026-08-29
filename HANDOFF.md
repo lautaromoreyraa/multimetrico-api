@@ -108,6 +108,19 @@ Tres decisiones del seed que **no son ruido** y que conviene no "simplificar":
   tiene una línea de base propia que pesa el doble que el movimiento del mes. Si
   cada mes fuera un sorteo independiente nadie "vendría mejorando" y la
   comparación contra otro mes no diría nada.
+- **Los incentivos también**: una planilla por mes, generada con un escritor de
+  `.xlsx` propio en `scripts/xlsx.mjs`. Se escribió a mano en vez de sumar una
+  dependencia —el repo de la API no tiene ni un `package.json`— y genera el
+  archivo más simple que POI acepta. **No es una librería de propósito general**:
+  si hace falta formato, fórmulas o varias hojas, la respuesta es una dependencia
+  de verdad, no agrandar eso.
+
+  Los importes correlacionan flojo con el desempeño para que la demo no muestre
+  al mejor del equipo cobrando el mínimo. **Es realismo del dato de ejemplo, no
+  una regla**: el sistema muestra el importe que venga.
+
+  En el último mes, dos personas quedan afuera de la planilla de incentivos.
+
 - **Tres personas sin archivo en el último mes**, salteadas en las cuatro semanas
   y no sólo en la última. Ver "Un corte por métrica" abajo: si aparecieran en las
   primeras y faltaran en la última, su vigente sería el corte viejo y la columna

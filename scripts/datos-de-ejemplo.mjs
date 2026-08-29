@@ -21,6 +21,8 @@
  * y los nombres no son de nadie.
  */
 
+import { libroDeUnaHoja } from './xlsx.mjs'
+
 const API = process.env.MULTIMETRICO_API ?? 'http://localhost:8082'
 const CAMPANIA = process.env.MULTIMETRICO_CAMPANIA ?? 'CONVERGENTE'
 
@@ -279,6 +281,53 @@ function mediciones(periodo, metrica, semana, corte, esUltimoMes) {
   return { periodo, fechaDeCorte: corte, origenImportacion: null, mediciones: items }
 }
 
+/* -- los incentivos --------------------------------------------------------- */
+
+/**
+ * Lo que cobra cada asesor en el mes.
+ *
+ * **No se calcula a partir del multimetrico**, y eso es el punto: los importes
+ * llegan resueltos desde la empresa y el sistema los adjunta tal cual. Aca se
+ * inventan con el mismo pseudoazar sembrado que el resto.
+ *
+ * Se los hace *correlacionar* con el desempeno -quien bonifica mas cobra algo
+ * mas- porque una demo donde el mejor del equipo cobra el minimo se lee como un
+ * error de la aplicacion. Es realismo del dato de ejemplo, no una regla: si
+ * manana la empresa manda cualquier otro numero, el sistema lo muestra igual.
+ */
+function importeDe(legajo, periodo) {
+  const base = 110000 + sembrado(`incentivo:${legajo}`) * 60000
+  const delMes = (sembrado(`incentivo:${legajo}:${periodo}`) - 0.5) * 24000
+
+  // El TMO sembrado sirve de proxy del desempeno: mas bajo, mejor.
+  const [min, max] = RANGOS.TMO
+  const desempeno = 1 - (Number(valorDe(legajo, 'TMO', periodo, SEMANAS - 1)) - min) / (max - min)
+
+  return Math.round((base + delMes + desempeno * 30000) / 50) * 50
+}
+
+/**
+ * Quienes no vienen en la planilla de incentivos del ultimo mes.
+ *
+ * Es el caso que la pantalla existe para mostrar: aparecen en la lista con el
+ * importe vacio en vez de desaparecer, y no cuentan como cero en el total.
+ */
+const SIN_INCENTIVO = ['10495', '10502']
+
+function planillaDeIncentivos(periodo, esUltimoMes) {
+  const afuera = esUltimoMes ? SIN_INCENTIVO : []
+  const filas = [['ASESOR', 'IMPORTE']]
+
+  for (const { legajo, nombre } of ASESORES) {
+    if (afuera.includes(legajo)) continue
+    // El archivo trae el NOMBRE y no el legajo, como los de verdad: es lo que
+    // obliga a que el sistema resuelva nombres contra el padron.
+    filas.push([nombre, importeDe(legajo, periodo)])
+  }
+
+  return { archivo: libroDeUnaHoja('Datos', filas), cargados: filas.length - 1 }
+}
+
 /* -- el envio --------------------------------------------------------------- */
 
 let fallas = 0
@@ -345,6 +394,52 @@ async function entrar() {
   console.log(`Entrando como ${cuerpo.legajo} (${cuerpo.rol})\n`)
 }
 
+/**
+ * Sube la planilla de incentivos del mes.
+ *
+ * Va aparte de `postear` porque es multipart y no JSON. Sin Content-Type a mano:
+ * el runtime tiene que poner el suyo con el boundary, y fijarlo desde aca deja al
+ * servidor sin poder parsear el cuerpo.
+ */
+async function subirIncentivos(periodo, esUltimoMes) {
+  const { archivo, cargados } = planillaDeIncentivos(periodo, esUltimoMes)
+
+  const cuerpo = new FormData()
+  cuerpo.append('archivo', new Blob([archivo]), `incentivos-${periodo}.xlsx`)
+  cuerpo.append('hoja', 'Datos')
+  cuerpo.append('columnaAsesor', 'ASESOR')
+  cuerpo.append('columnaImporte', 'IMPORTE')
+
+  let respuesta
+  try {
+    respuesta = await fetch(`${API}/api/incentivos/${periodo}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: cuerpo,
+    })
+  } catch {
+    console.error(`  FALLO   ${periodo} incentivos: no se pudo contactar la API`)
+    fallas += 1
+    return 0
+  }
+
+  if (!respuesta.ok) {
+    console.error(`  FALLO   ${periodo} incentivos (HTTP ${respuesta.status})`)
+    console.error(`  ${(await respuesta.text()).slice(0, 300)}`)
+    fallas += 1
+    return 0
+  }
+
+  const informe = await respuesta.json()
+  if (informe.rechazadas.length > 0) {
+    // No es un fallo del script, pero si lo fuera del generador conviene verlo:
+    // una fila rechazada aca significa que un nombre dejo de resolver.
+    console.error(`  OJO     ${periodo}: ${informe.rechazadas.length} fila(s) sin cargar`)
+    informe.rechazadas.forEach((f) => console.error(`          fila ${f.numeroDeFila}: ${f.motivo}`))
+  }
+  return cargados
+}
+
 async function main() {
   const lista = [...meses(DESDE, HASTA)]
   if (lista.length === 0) {
@@ -388,7 +483,12 @@ async function main() {
       resumen.push(`${metrica.slice(0, 3)} al ${cortes[SEMANAS - 1].slice(8)}`)
     }
 
-    console.log(`  ${periodo}  ${ASESORES.length} asesores  ·  ${SEMANAS} cargas  ·  ${resumen.join('  ')}`)
+    const conIncentivo = await subirIncentivos(periodo, esUltimoMes)
+
+    console.log(
+      `  ${periodo}  ${ASESORES.length} asesores  ·  ${SEMANAS} cargas  ·  ` +
+        `${conIncentivo} incentivos  ·  ${resumen.join('  ')}`,
+    )
   }
 
   if (fallas > 0) {
