@@ -2,8 +2,24 @@
 
 El orden importa: **primero el backend**, porque el frontend necesita su URL.
 
-Todo lo que sigue lo tenés que correr vos: `railway login` y `vercel login` abren
-el navegador y la sesión es tuya.
+## Estado actual
+
+**El backend ya está desplegado y con datos.**
+
+- Proyecto Railway: `multimetrico` (workspace `lautaromoreyraa's Projects`)
+- Servicios: `multimetrico-api` y `MySQL`
+- URL: <https://multimetrico-api-production.up.railway.app>
+- Las tres migraciones de Flyway se aplicaron solas al arrancar
+- Cargado con el seed: 8 meses de 2026, campaña `CONVERGENTE`
+
+Falta el frontend en Vercel, que necesita `vercel login` — eso sale de tu lado.
+
+> **Cuidado al correr comandos de Railway en este directorio.** Antes de crear el
+> proyecto, la carpeta estaba vinculada a otro proyecto tuyo (`oriente`). Un
+> `railway up` en esa situación habría desplegado el multimétrico **encima de
+> ese proyecto**. Verificá siempre con `railway status` antes de desplegar.
+
+---
 
 ---
 
@@ -21,15 +37,17 @@ reales, esto hay que volver a cerrarlo; está anotado en `HANDOFF.md`.
 
 ## 1. Backend en Railway
 
+Esto ya se hizo; queda como referencia para rehacerlo desde cero.
+
 ```bash
 cd multimetrico-api
-railway login          # abre el navegador
-railway init           # crea el proyecto; elegí un nombre
+railway login                                    # abre el navegador
+railway status                                   # ¿a qué proyecto apunta la carpeta?
+railway unlink -y                                # si apunta a otro proyecto
+railway init --name multimetrico --workspace "tu workspace"
 ```
 
 ### 1.1 La base
-
-Agregá el MySQL desde el panel de Railway (**New → Database → MySQL**) o:
 
 ```bash
 railway add --database mysql
@@ -37,8 +55,23 @@ railway add --database mysql
 
 ### 1.2 Enlazar la base con la app
 
-El servicio de la API necesita ver las variables del MySQL. En el panel, en
-**Variables** del servicio de la API, agregá estas cinco **como referencias**:
+El servicio de la API se crea con sus variables de una:
+
+```bash
+railway add --service multimetrico-api \
+  -v "JWT_SECRETO=$(openssl rand -base64 48)" \
+  -v "ADMIN_PASSWORD=la-que-elijas" \
+  -v 'MYSQLHOST=${{MySQL.MYSQLHOST}}' \
+  -v 'MYSQLPORT=${{MySQL.MYSQLPORT}}' \
+  -v 'MYSQLDATABASE=${{MySQL.MYSQLDATABASE}}' \
+  -v 'MYSQLUSER=${{MySQL.MYSQLUSER}}' \
+  -v 'MYSQLPASSWORD=${{MySQL.MYSQLPASSWORD}}'
+```
+
+Las cinco del MySQL van **como referencias** —con `${{MySQL.…}}`— y en comillas
+simples, para que las expanda Railway y no el shell. Si el servicio de base se
+llama distinto, cambiá ese prefijo. En el panel se agregan igual, en
+**Variables** del servicio de la API:
 
 | Variable | Valor |
 |---|---|
@@ -74,7 +107,8 @@ prefijo.
 ### 1.3 Desplegar
 
 ```bash
-railway up
+railway service multimetrico-api   # que el CLI apunte al servicio y no a la base
+railway up --detach
 ```
 
 Usa el `Dockerfile` del repo. Es a propósito: la autodetección elige la versión
@@ -90,15 +124,13 @@ después *"Started MultimetricoApplication"*.
 railway domain          # genera y muestra el dominio
 ```
 
-Guardala: es lo que va en el paso 3. Se ve como
-`https://algo-production.up.railway.app`.
+Comprobá que responde abriendo `/api/pliegos` en el navegador: con la base recién
+creada devuelve `[]`, y **un 200 con lista vacía es lo correcto acá** — quiere
+decir que la API está viva y la base todavía no tiene nada.
 
-Comprobá que responde:
-
-```bash
-curl https://TU-URL.up.railway.app/api/pliegos
-# [] con la base vacía. Un 200 con lista vacía es lo correcto acá.
-```
+Los logs se miran con `railway logs` (el runtime) y `railway logs --build` (la
+compilación). Tiene que aparecer *"Successfully applied 3 migrations"* y después
+*"Started MultimetricoApplication"*.
 
 ### 1.5 Cargar los datos
 
