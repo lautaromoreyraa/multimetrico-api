@@ -51,11 +51,16 @@ lo que trataba los "cortes mezclados" como algo normal: el aviso de arriba de la
 tabla y la fecha por celda. El encabezado de cada métrica dice su fecha y con eso
 alcanza.
 
+Que haya **varias cargas por mes** no contradice esto: cada carga semanal cubre a
+todo el equipo, así que la vigente de todos es la del último archivo y sigue
+habiendo una sola fecha por métrica en un momento dado. Lo que rompe la propiedad
+es que una carga cubra sólo a una parte del equipo.
+
 **Ojo**: el backend no lo valida. `ResumenDeEquipo.cortesPorMetrica` sigue siendo
 un `Set<LocalDate>` y la pantalla toma el primero. Quien lo garantiza hoy es el
-seed, que manda **un lote por métrica**. Si alguna vez una importación parte una
-métrica en dos cortes, la pantalla va a mostrar sólo uno sin avisar. Convertirlo
-en una validación de verdad es trabajo pendiente.
+seed. Si alguna vez una importación parte una métrica en dos cortes, la pantalla
+va a mostrar sólo uno sin avisar. Convertirlo en una validación de verdad es
+trabajo pendiente.
 
 **3. Las mediciones no tienen campaña.** No es nuevo, pero costó una hora
 descubrirlo: `Medicion` se identifica por período, legajo y métrica, así que las
@@ -98,11 +103,19 @@ Tres decisiones del seed que no son ruido:
   movimiento del mes. Si cada mes fuera un sorteo independiente, la comparación
   contra el mes anterior no diría nada: nadie "viene mejorando", cada mes sería
   otra persona.
-- **Un lote por métrica**, no uno solo con todo adentro. Es lo que garantiza una
-  sola fecha de corte por métrica, y es como llegan los archivos de verdad.
+- **Un lote por métrica y por semana**, cuatro por mes. Es como llegan los
+  archivos, y es lo que le da algo que mostrar al historial intra-mes: con una
+  sola carga por mes la serie tiene un punto y no cuenta nada.
 
-En el último mes deja tres personas sin archivo en alguna métrica: es lo que
-ejercita la regla de que una métrica sin archivo bonifica cero.
+La última semana **es** el valor de cierre, exacto; las anteriores se sacuden
+alrededor y se le van acercando. Así el número que finalmente cuenta no depende
+de cuántas semanas se hayan cargado.
+
+En el último mes deja tres personas sin archivo en alguna métrica, **salteadas en
+las cuatro semanas y no sólo en la última**. Es sutil y tiene una razón: si
+aparecieran en las primeras y faltaran en la última, su vigente sería el corte
+viejo y la columna terminaría con dos fechas conviviendo, que es justo lo que no
+puede pasar.
 
 Ojo con dos cosas que costaron un rato:
 

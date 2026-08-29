@@ -73,10 +73,19 @@ meses y no uno solo porque "Mis métricas" compara contra el mes anterior. No
 carga meses futuros: serían mediciones con una fecha de corte que todavía no
 ocurrió. Para otro rango, `node scripts/datos-de-ejemplo.mjs 2026-01 2026-12`.
 
-Dos cosas que hace a propósito y no son ruido: cada métrica tiene **una sola
-fecha de corte por mes**, distinta de las otras, porque cada archivo llega su
-propio día; y en el último mes hay tres personas sin archivo en alguna métrica,
-que es lo que ejercita la regla de que una métrica sin archivo bonifica cero.
+Tres cosas que hace a propósito y no son ruido:
+
+- **Cuatro cargas por métrica y por mes**, una por semana. Cada carga es una
+  medición nueva y no un `UPDATE`, que es lo que deja reconstruir por qué cambió
+  un número dentro del mes.
+- **Un solo corte vigente por métrica.** Cada archivo trae a todo el equipo con
+  la misma fecha, así que en un momento dado no puede haber dos fechas
+  conviviendo en una columna. El día sí cambia entre métricas, porque depende de
+  cuándo mande cada archivo la empresa.
+- En el último mes, **tres personas sin archivo** en alguna métrica —y salteadas
+  en las cuatro semanas, no sólo en la última—, que es lo que ejercita la regla
+  de que una métrica sin archivo bonifica cero.
+
 Correrlo dos veces es inofensivo.
 
 El contenedor puede existir apagado de una sesión anterior: si `compose up`
@@ -178,6 +187,15 @@ Una métrica sin archivo **bonifica cero**: es lo que se cobra si el archivo no
 llegó. Lo que no se rellena es el valor medido, que se muestra vacío — escribir
 un 0 ahí diría que se midió cero, que es una afirmación sobre el desempeño de
 alguien que nadie hizo.
+
+Los tres estados de una bonificación se leen de un barrido, por color y también
+por el número: **suma** en acento, **cero** en ámbar y **resta** en rojo. El cero
+va en ámbar y no en gris porque no es la ausencia de un dato: es un resultado, y
+encima el que conviene ir a mirar.
+
+La segunda pantalla, **Mis métricas**, compara a una persona contra el mes
+anterior y muestra al pie cómo se movió cada métrica dentro del mes, carga por
+carga, con la vigente marcada.
 
 **Lo que falta es autenticación** (`PLAN.md` §5.6). Hoy cualquiera ve la fila de
 cualquiera, en la API y en la pantalla, y el selector de asesor de "Mi

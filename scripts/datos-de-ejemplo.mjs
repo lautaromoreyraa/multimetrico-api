@@ -184,8 +184,11 @@ const RANGOS = {
   BAJA_CONVERGENTE: [0.4, 3.4, 1],
 }
 
+/** Cuantas veces al mes llega el archivo de una metrica. Una por semana. */
+const SEMANAS = 4
+
 /**
- * El valor de un asesor en una metrica y un mes.
+ * El valor de cierre de un asesor en una metrica y un mes.
  *
  * No es ruido puro mes a mes: se mezcla una linea de base propia del asesor
  * -que pesa el doble- con un movimiento del mes. Si cada mes fuera un sorteo
@@ -193,26 +196,49 @@ const RANGOS = {
  * nadie "viene mejorando": cada mes seria una persona distinta. Asi, cada uno
  * tiene su nivel y se mueve alrededor.
  */
-function valorDe(legajo, metrica, periodo) {
-  const [min, max, decimales] = RANGOS[metrica]
+function valorDeCierre(legajo, metrica, periodo) {
+  const [min, max] = RANGOS[metrica]
   const base = sembrado(`${legajo}:${metrica}`)
   const delMes = sembrado(`${legajo}:${metrica}:${periodo}`)
-  const mezcla = (base * 2 + delMes) / 3
-  return (min + mezcla * (max - min)).toFixed(decimales)
+  return min + ((base * 2 + delMes) / 3) * (max - min)
 }
 
 /**
- * La fecha de corte de una metrica en un mes.
+ * El valor de una semana concreta.
  *
- * **Una sola por metrica y por mes, para todo el equipo.** Cada metrica llega en
- * su propio archivo y ese archivo trae a todos con el mismo corte, asi que
- * dentro de una columna no puede haber dos fechas. Lo que si cambia es el dia
- * entre una metrica y otra, y entre un mes y otro, porque depende de cuando la
- * empresa mande cada archivo.
+ * Las semanas previas se sacuden alrededor del valor de cierre y se le van
+ * acercando: la ultima **es** el cierre, exacto. Asi la metrica se mueve dentro
+ * del mes -que es lo que el historial existe para mostrar- sin que el numero que
+ * finalmente cuenta dependa de cuantas semanas se hayan cargado.
  */
-function corteDe(metrica, periodo) {
-  const dia = 8 + Math.floor(sembrado(`corte:${metrica}:${periodo}`) * 19) // 8..26
-  return `${periodo}-${String(dia).padStart(2, '0')}`
+function valorDe(legajo, metrica, periodo, semana) {
+  const [min, max, decimales] = RANGOS[metrica]
+  const cierre = valorDeCierre(legajo, metrica, periodo)
+  if (semana === SEMANAS - 1) return cierre.toFixed(decimales)
+
+  const desvio = sembrado(`${legajo}:${metrica}:${periodo}:s${semana}`) - 0.5
+  const cuanto = (SEMANAS - 1 - semana) / (SEMANAS - 1)
+  const crudo = cierre + desvio * cuanto * (max - min) * 0.22
+  return Math.min(Math.max(crudo, min), max).toFixed(decimales)
+}
+
+/**
+ * Las fechas de corte de una metrica en un mes: una por semana.
+ *
+ * Cada archivo trae a **todo el equipo** con el mismo corte, asi que en un
+ * momento dado no puede haber dos fechas conviviendo dentro de una metrica: la
+ * vigente de todos es la del ultimo archivo. Lo que si cambia es el dia entre
+ * una metrica y otra, porque depende de cuando la empresa mande cada una.
+ *
+ * El primer dia cae entre el 1 y el 7 para que las cuatro semanas entren en
+ * febrero tambien.
+ */
+function cortesDe(metrica, periodo) {
+  const primero = 1 + Math.floor(sembrado(`corte:${metrica}:${periodo}`) * 7) // 1..7
+  return Array.from({ length: SEMANAS }, (_, semana) => {
+    const dia = primero + semana * 7
+    return `${periodo}-${String(dia).padStart(2, '0')}`
+  })
 }
 
 /**
@@ -223,23 +249,23 @@ function corteDe(metrica, periodo) {
  * realista -los meses cerrados llegaron completos, el que esta corriendo
  * todavia no- y ademas deja la comparacion contra el mes anterior con algo que
  * mostrar: alguien que el mes pasado cobraba NPS y este mes todavia no.
+ *
+ * **Se los saltea en las cuatro semanas, no solo en la ultima.** Si aparecieran
+ * en las primeras y faltaran en la ultima, su vigente seria el corte viejo y la
+ * columna terminaria con dos fechas conviviendo, que es justo lo que no puede
+ * pasar. Sin archivo en todo el mes, no tienen medicion y punto.
  */
 const SIN_ARCHIVO = { NPS: ['10433', '10495'], BAJA_CONVERGENTE: ['10460'] }
 
-function mediciones(periodo, metrica, esUltimoMes) {
+function mediciones(periodo, metrica, semana, corte, esUltimoMes) {
   const sinDato = esUltimoMes ? (SIN_ARCHIVO[metrica] ?? []) : []
   const items = ASESORES.filter(({ legajo }) => !sinDato.includes(legajo)).map(({ legajo }) => ({
     legajo,
     metrica,
-    valor: valorDe(legajo, metrica, periodo),
+    valor: valorDe(legajo, metrica, periodo, semana),
   }))
 
-  return {
-    periodo,
-    fechaDeCorte: corteDe(metrica, periodo),
-    origenImportacion: null,
-    mediciones: items,
-  }
+  return { periodo, fechaDeCorte: corte, origenImportacion: null, mediciones: items }
 }
 
 /* -- el envio --------------------------------------------------------------- */
@@ -295,16 +321,23 @@ async function main() {
     await postear('/api/pliegos', { periodo, campania: CAMPANIA, escalas: ESCALAS }, `${periodo} pliego`)
     await postear('/api/padrones', { periodo, asesores: ASESORES }, `${periodo} padron`)
 
-    // Un lote por metrica, no uno solo con todo adentro: asi cada metrica queda
-    // con su propia fecha de corte y una sola, que es como llegan los archivos.
-    const cortes = []
+    // Un lote por metrica y por semana, no uno solo con todo adentro.
+    //
+    // Cada carga semanal es una medicion nueva y no un UPDATE: eso es lo que
+    // deja reconstruir por que cambio un numero dentro del mes, que es de las
+    // pocas cosas que la planilla no puede contestar. La vigente es la del
+    // ultimo corte, asi que la tabla del equipo muestra la semana de cierre.
+    const resumen = []
     for (const metrica of METRICAS) {
-      const lote = mediciones(periodo, metrica, esUltimoMes)
-      await postear('/api/mediciones', lote, `${periodo} ${metrica}`)
-      cortes.push(`${metrica.slice(0, 3)} al ${lote.fechaDeCorte.slice(8)}`)
+      const cortes = cortesDe(metrica, periodo)
+      for (let semana = 0; semana < SEMANAS; semana++) {
+        const lote = mediciones(periodo, metrica, semana, cortes[semana], esUltimoMes)
+        await postear('/api/mediciones', lote, `${periodo} ${metrica} s${semana + 1}`)
+      }
+      resumen.push(`${metrica.slice(0, 3)} al ${cortes[SEMANAS - 1].slice(8)}`)
     }
 
-    console.log(`  ${periodo}  ${ASESORES.length} asesores  ·  ${cortes.join('  ')}`)
+    console.log(`  ${periodo}  ${ASESORES.length} asesores  ·  ${SEMANAS} cargas  ·  ${resumen.join('  ')}`)
   }
 
   if (fallas > 0) {
