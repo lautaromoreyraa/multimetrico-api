@@ -137,22 +137,28 @@ Estrategias, en orden: `LEGAJO`, `NOMBRE_EXACTO`, `ALIAS_CONFIRMADO`, `PREFIJO_U
 
 **Invariante:** `resueltos + pendientes == cantidad de nombres que entraron`.
 
-### 5.3 `medicion` — POR HACER
+### 5.3 `medicion` — HECHO
 
 `Medicion(legajo, metrica, periodo, valor, fechaDeCorte, origenImportacion)`
 
 - **Se guarda la historia dentro del mes.** Cada carga semanal es una medición
   nueva, no un `UPDATE`. Permite ver la evolución y explicar por qué cambió un número.
 - **El valor vigente de una métrica es el de la fecha de corte más reciente.**
-- Nunca se inventa un cero. Una métrica sin medición está *faltante*, que es
-  distinto de valer cero.
+  Con empate, gana la última cargada: dos mediciones del mismo corte son el mismo
+  archivo subido dos veces y la segunda es la corrección.
+- **Nunca se inventa un valor.** Una métrica sin medición está *faltante* y viaja
+  aparte de `alcances`. Eso es lo único que permite distinguir "no hay archivo"
+  de "hay un valor que paga cero", y una vez aplastados no se separan más.
+
+  Ojo con la lectura: lo que **no** se inventa es el *valor medido*. Lo que esa
+  métrica **cobra** sí es cero — ver 5.4.
 
 | Método | Ruta |
 |---|---|
 | `POST` | `/api/mediciones` — alta en lote |
 | `GET` | `/api/mediciones/{aaaa-mm}?legajo=&metrica=` — historia |
 
-### 5.4 `multimetrico` — POR HACER
+### 5.4 `multimetrico` — HECHO
 
 `FilaDeMultimetrico(asesor, alcances[], alcanceTotal, faltantes[], cortesPorMetrica)`
 
@@ -160,14 +166,22 @@ Estrategias, en orden: `LEGAJO`, `NOMBRE_EXACTO`, `ALIAS_CONFIRMADO`, `PREFIJO_U
   de cada métrica, la evalúa contra el pliego **de ese período** y arma la fila.
 - **Cada métrica lleva su "actualizado al".** Es lo que la planilla pierde al
   juntar métricas de cortes distintos.
-- El total suma solo lo que se pudo calcular; las faltantes viajan aparte.
+- **Una métrica sin archivo bonifica cero.** Si al día 10 no llegó el NPS, el
+  NPS no paga, y la fila entra en los promedios del equipo como cualquier otra.
+  `alcanceTotal` suma sólo lo presente, que es idéntico a sumar cero por lo
+  ausente: el cálculo no necesita saber de esta regla.
+- Las faltantes igual viajan aparte, para que quien muestre la fila pueda dejar el
+  valor vacío en vez de escribir un 0 que afirmaría que se midió cero.
+- **Una métrica tiene un solo corte vigente por mes.** Cada archivo trae a todo el
+  equipo con la misma fecha, así que dentro de una columna no puede haber dos
+  fechas conviviendo. **Todavía no está validado en el backend.**
 
 | Método | Ruta |
 |---|---|
 | `GET` | `/api/multimetrico/{aaaa-mm}?lider=&campania=` |
 | `GET` | `/api/multimetrico/{aaaa-mm}/asesores/{legajo}?campania=` |
 
-### 5.5 `importacion` — POR HACER
+### 5.5 `importacion` — HECHO
 
 **El formato de los archivos de origen es desconocido y va a cambiar**, así que el
 mapeo es configuración en tiempo de ejecución, no código.
@@ -218,16 +232,18 @@ Tres cosas que no se pueden aflojar, cada una anotada en el código:
   `legajo_clave`, `nombre_clave`) en vez de depender de la collation, que compara
   distinto en MySQL que en H2.
 
-### 5.8 Frontend — POR HACER
+### 5.8 Frontend — HECHO
 
 Proyecto aparte: `../multimetrico-frontend`. React + Vite + TypeScript.
 
-1. **Mi multimétrico** (asesor): sus métricas, en qué tramo cayó cada una, cuánto
-   le falta para el tramo de arriba, y la fecha de corte de cada una.
-2. **Equipo** (supervisor): la tabla del equipo, con los faltantes visibles.
-3. **Cargar pliego**: subir el del mes y **ver los errores de validación**. Es la
+1. **Multimétrico** (supervisor): el equipo entero, con dos columnas por métrica
+   —el valor medido y lo que paga— y el promedio del líder fijo al pie.
+2. **Mis métricas** (asesor): sus métricas contra otro mes a elección, y cómo se
+   movió cada una dentro del mes.
+3. **Pliego**: cargar el del mes y **ver los errores de validación**. Es la
    pantalla que demuestra el proyecto.
 4. **Importación**: subir el archivo semanal y ver el informe.
+5. **Perfiles**: definir cómo se lee un archivo nuevo.
 
 **Es un frontend de lectura y carga, no un dashboard.** Sin gráficos de torta. El
 valor está en el backend; la pantalla tiene que dejarlo ver.
@@ -236,13 +252,14 @@ valor está en el backend; la pantalla tiene que dejarlo ver.
 
 ## 6. Orden de trabajo
 
-1. `medicion` + `multimetrico` — el producto empieza a existir
-2. `importacion` — deja de depender de cargar a mano
-3. `persistencia` — sobrevive a un reinicio
-4. `seguridad` — cada uno ve lo suyo
-5. Frontend — se puede mostrar
+1. ~~`medicion` + `multimetrico`~~ — el producto empieza a existir
+2. ~~`importacion`~~ — deja de depender de cargar a mano
+3. ~~`persistencia`~~ — sobrevive a un reinicio
+4. ~~Frontend~~ — se puede mostrar
+5. **`seguridad` — cada uno ve lo suyo.** Lo único que queda.
 
-El frontend puede ir en paralelo contra el contrato de este documento.
+El frontend se adelantó al orden original y fue lo correcto: mostrar la tabla es
+lo que hizo aparecer los problemas de criterio que ningún test iba a encontrar.
 
 ---
 
@@ -252,4 +269,7 @@ El frontend puede ir en paralelo contra el contrato de este documento.
 - `./mvnw test` pasa entero.
 - Verificado contra la API corriendo, no solo con tests.
 - Las decisiones no obvias, explicadas en el código.
+- Si toca pantalla, **mirado en el navegador**. La única falla real que encontró
+  la primera revisión visual había pasado el `tsc` y el build sin problema.
 - `HANDOFF.md` actualizado.
+- Commits **sin firma de agente**.
