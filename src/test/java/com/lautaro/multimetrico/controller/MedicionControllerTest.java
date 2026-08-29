@@ -1,5 +1,7 @@
 package com.lautaro.multimetrico.controller;
 
+import static com.lautaro.multimetrico.fixture.Identidades.admin;
+import static com.lautaro.multimetrico.fixture.Identidades.como;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -10,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -29,7 +32,12 @@ class MedicionControllerTest {
 
     private MockMvc mvc() {
         if (mockMvc == null) {
-            mockMvc = MockMvcBuilders.webAppContextSetup(contexto).build();
+            // springSecurity() mete la cadena de seguridad real en el MockMvc. Sin
+            // esto los tests pasan por al lado de toda la autorizacion: un GET sin
+            // token devolveria 200 y nadie se enteraria de que la regla no anda.
+            mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
+                    .apply(SecurityMockMvcConfigurers.springSecurity())
+                    .build();
         }
         return mockMvc;
     }
@@ -41,7 +49,8 @@ class MedicionControllerTest {
     }
 
     private void registrar(String cuerpo) throws Exception {
-        mvc().perform(post("/api/mediciones").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+        mvc().perform(post("/api/mediciones").contentType(MediaType.APPLICATION_JSON).content(cuerpo)
+                        .with(como(admin())))
                 .andExpect(status().isCreated());
     }
 
@@ -53,7 +62,8 @@ class MedicionControllerTest {
                 { "legajo": "u100", "metrica": "TMO", "valor": 712 }
                 """);
 
-        mvc().perform(post("/api/mediciones").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+        mvc().perform(post("/api/mediciones").contentType(MediaType.APPLICATION_JSON).content(cuerpo)
+                        .with(como(admin())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.registradas").value(3))
                 .andExpect(jsonPath("$.asesores").value(2))
@@ -74,7 +84,8 @@ class MedicionControllerTest {
                 { "legajo": "u100", "metrica": "FCR", "valor": 78.2 }
                 """));
 
-        mvc().perform(get("/api/mediciones/2027-06").param("legajo", "u100").param("metrica", "FCR"))
+        mvc().perform(get("/api/mediciones/2027-06").param("legajo", "u100").param("metrica", "FCR")
+                        .with(como(admin())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(2))
                 .andExpect(jsonPath("$.mediciones[0].valor").value(70.5))
@@ -94,7 +105,8 @@ class MedicionControllerTest {
                 .content(lote("2027-07", "2027-07-08", """
                         { "legajo": "u100", "metrica": "FCR", "valor": 70.5 },
                         { "legajo": "u100", "metrica": "TMO", "valor": 712, "fechaDeCorte": "2027-07-01" }
-                        """)))
+                        """))
+                        .with(como(admin())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.cortes", org.hamcrest.Matchers.contains("2027-07-01", "2027-07-08")));
     }
@@ -105,7 +117,8 @@ class MedicionControllerTest {
         mvc().perform(post("/api/mediciones").contentType(MediaType.APPLICATION_JSON)
                 .content(lote("2027-08", "2027-08-08", """
                         { "legajo": "u100", "metrica": "NPS", "valor": null }
-                        """)))
+                        """))
+                        .with(como(admin())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detalles[0]", org.hamcrest.Matchers.containsString("valor")));
     }

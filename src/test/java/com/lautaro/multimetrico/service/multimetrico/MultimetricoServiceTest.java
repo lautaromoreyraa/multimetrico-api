@@ -22,6 +22,7 @@ import com.lautaro.multimetrico.service.padron.PadronService;
 import com.lautaro.multimetrico.service.pliego.PliegoService;
 import java.time.YearMonth;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,6 +35,27 @@ import org.springframework.boot.test.context.SpringBootTest;
  */
 @SpringBootTest
 class MultimetricoServiceTest {
+
+    /**
+     * Estos tests miran el cálculo, no la autorización.
+     *
+     * <p>Actúan como ADMIN para que el control de acceso no sea lo que decide si
+     * pasan: quien prueba el control es {@code SeguridadTest}, y mezclarlo acá
+     * haría que estos fallaran por dos motivos distintos.
+     *
+     * <p>El contexto se limpia al terminar porque vive en un ThreadLocal y JUnit
+     * reusa el hilo: una identidad que queda puesta se filtra al test siguiente.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void actuarComoAdmin() {
+        com.lautaro.multimetrico.fixture.Identidades.actuarComo(
+                com.lautaro.multimetrico.fixture.Identidades.admin());
+    }
+
+    @AfterEach
+    void olvidarIdentidad() {
+        com.lautaro.multimetrico.fixture.Identidades.olvidar();
+    }
 
     @Autowired
     private MultimetricoService multimetricos;

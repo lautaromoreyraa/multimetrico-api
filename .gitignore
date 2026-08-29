@@ -10,3 +10,6 @@ target/
 *.xlsx
 *.xls
 *.csv
+
+# El local lleva el secreto de firma: no entra al repositorio.
+src/main/resources/application-local.properties

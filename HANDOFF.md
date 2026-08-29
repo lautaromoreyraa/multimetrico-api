@@ -5,7 +5,12 @@ el **cómo viene** y, sobre todo, **qué no volver a romper**.
 
 Última actualización: 2026-08-28, noche.
 
-**El MVP anda de punta a punta y está subido.** Falta seguridad y nada más.
+**El backend está completo y subido.** Entró la seguridad, y con eso el alcance
+original quedó cerrado.
+
+> **La pantalla no funciona ahora mismo.** La API pide token y el frontend
+> todavía no sabe pedirlo, así que todas las secciones muestran el cartel de
+> error. Es lo primero de "Por dónde seguir".
 
 Antes de tocar el multimétrico, leé "Reglas de producto". Varias invierten lo que
 el código defendía hace dos días, y los comentarios viejos ya no están pero la
@@ -23,10 +28,10 @@ intuición sigue tirando para el otro lado.
 | `multimetrico` | ✅ | (idem) | Incluye el tramo de arriba, accionable |
 | `importacion` | ✅ | 8 | Perfil configurable; ninguna fila se pierde |
 | `persistencia` | ✅ | 24 | MySQL + Flyway; los tests corren contra H2 en modo MySQL |
-| `seguridad` | ⬜ | — | **Lo único que falta del alcance** |
+| `seguridad` | ✅ | 14 | JWT y control **por fila**. Falta la pantalla de login |
 | frontend | ✅ | **0** | `../multimetrico-frontend`. Cinco pantallas, sin mocks, revisadas en el navegador. Sin un solo test |
 
-**134 tests, en verde.**
+**148 tests, en verde.**
 
 ## Los dos repos
 
@@ -55,9 +60,17 @@ node scripts/datos-de-ejemplo.mjs  # los datos, sin esto la pantalla da 404
 cd ../multimetrico-frontend && npm run dev   # la pantalla, en el 5174
 ```
 
-`./mvnw test` corre los 134 y **no necesita la base levantada**: usan H2 en modo
+`./mvnw test` corre los 148 y **no necesita la base levantada**: usan H2 en modo
 de compatibilidad MySQL con las mismas migraciones de Flyway. La aplicación sí la
 necesita.
+
+**La configuración pasó de YAML a `.properties`** y se partió en dos:
+`application.properties` no tiene ni un valor concreto —todo es `${VAR:default}`—
+y los valores de la máquina viven en `application-local.properties`, que **no se
+commitea**. Hay un `.example` al lado; copialo la primera vez.
+
+Sin `JWT_SECRETO` (o su equivalente en el archivo local) **la aplicación no
+arranca**, a propósito. Ver "Quién ve qué".
 
 Cosas que cuestan un rato si no las sabés:
 
@@ -109,11 +122,14 @@ otra campaña, usá otro período o vaciá la base. Esto costó una hora.
 
 ## Por dónde seguir
 
-**1. Seguridad (`PLAN.md` §5.6).** Lo único que falta del alcance y lo más
-visible para quien evalúe el proyecto. Hoy cualquiera ve la fila de cualquiera.
-El control es **por fila, no por endpoint**: un asesor que pide la fila de otro
-recibe 403, nunca la fila. En el frontend, "Mis métricas" tiene un selector de
-asesor que hay que reemplazar por el legajo del token.
+**1. La pantalla de login.** El backend ya pide token y el frontend no sabe
+pedirlo, así que **hoy la pantalla no funciona**: todas las secciones muestran el
+cartel de error. Hace falta una pantalla de login, guardar el token, mandarlo en
+cada request y manejar el 401 volviendo al login.
+
+Además, "Mis métricas" tiene un selector de asesor que con seguridad ya no tiene
+sentido para un ASESOR: tiene que mostrar el legajo del token. Para un SUPERVISOR
+sí sigue sirviendo, acotado a su equipo.
 
 **2. El corte único por métrica no está validado en el backend.** Ver abajo. Hoy
 lo garantiza el seed y nada más.
@@ -147,6 +163,51 @@ aplastados no se separan más. En la pantalla eso se ve como el valor vacío y e
 cero sólo en la columna de lo que paga: escribir un 0 en la columna del valor
 diría que se midió cero, que es una afirmación sobre el desempeño de alguien que
 nadie hizo.
+
+### Quién ve qué
+
+El requisito estaba escrito así y se cumplió al pie de la letra: **un asesor que
+pide la fila de otro recibe 403, nunca la fila**.
+
+| Rol | Ve |
+|---|---|
+| `ASESOR` | Su fila y nada más. No llega a la tabla del equipo |
+| `SUPERVISOR` | Las filas de su equipo. Sin pedir equipo, obtiene el suyo |
+| `ADMIN` | Todo, y es el único que carga pliegos, padrones y mediciones |
+
+**El control es por fila, no por endpoint**, y esa es la parte que importa. Una
+regla por endpoint no puede cumplir el requisito: `/asesores/10419` es el mismo
+endpoint sin importar de quién sea el 10419. Por eso hay dos capas:
+
+- `SeguridadConfig` decide a qué endpoint se llega. Es lo que un rol puede
+  contestar.
+- `ControlDeAcceso` decide de quién es el dato, y vive **adentro del servicio**.
+  Está antes de leer nada, así que la fila del otro no llega a construirse.
+
+La comprobación de equipo de un supervisor no está en `ControlDeAcceso` sino en
+`MultimetricoServiceImpl`: la respuesta está en el padrón del período, que el
+control no conoce, y quien ya tiene el asesor en la mano es el servicio.
+
+**Tres decisiones que parecen de más y no lo son:**
+
+1. **El secreto de firma no tiene default.** Con default, el día que alguien se
+   olvida de configurarlo en producción no se entera: los tokens se firman con la
+   clave que está en el repositorio y cualquiera se fabrica uno de administrador.
+   Sin `JWT_SECRETO` la aplicación no arranca y dice exactamente qué hacer.
+2. **El login no dice qué falló.** Legajo inexistente y contraseña equivocada dan
+   el mismo mensaje, y además se compara contra un hash de descarte cuando el
+   usuario no existe, para que las dos respuestas tarden parecido. Sin eso, la
+   diferencia de tiempo dice lo mismo que el mensaje que se decidió no dar.
+3. **El admin inicial se crea desde el entorno, no desde una migración.** Una
+   migración tendría que traer el hash escrito en un archivo que va al
+   repositorio. Sin `ADMIN_PASSWORD` no se crea nada y se avisa en el log: un
+   `admin/admin` por defecto es peor que una base a la que todavía no se entra.
+
+**Lo que el token trae y lo que eso implica.** Rol y equipo viajan firmados, así
+que no hay una consulta por request. La contracara: si a alguien le cambian el rol
+o el equipo, su token viejo sigue diciendo lo anterior hasta que vence (ocho
+horas). Es un riesgo asumido; si hace falta revocar en el momento, `Credencial`
+pasa a leerse de la base.
 
 ### Un corte por métrica, varias cargas por mes
 

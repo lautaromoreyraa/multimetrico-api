@@ -1,0 +1,37 @@
+# Plantilla de application-local.properties.
+#
+#   cp application-local.properties.example application-local.properties
+#
+# El archivo real NO se commitea: esta en .gitignore. Este de ejemplo si, para
+# que quien clone el repositorio sepa que variables existen sin tener que leer
+# el codigo.
+#
+# Se carga solo, porque application.properties activa el perfil `local` por
+# defecto. Dentro de la imagen de Docker este archivo no existe y la aplicacion
+# toma todo del entorno, que es lo que se quiere.
+
+# --- obligatorio ------------------------------------------------------------
+
+# La clave con la que se firman los tokens. Minimo 32 caracteres: HS256 firma con
+# 256 bits y una clave mas corta la rechaza la libreria.
+#
+# Para desarrollo sirve cualquier cadena larga. Para produccion, algo generado:
+#   openssl rand -base64 48
+multimetrico.seguridad.jwt.secreto=cambiala-por-una-cadena-larga-de-al-menos-32-caracteres
+
+# La contrasena del primer administrador. Solo se usa si la tabla de usuarios
+# esta vacia; despues de eso el usuario ya existe y esto no hace nada.
+multimetrico.seguridad.admin-inicial.password=admin
+
+
+# --- opcionales -------------------------------------------------------------
+# Descomentalos solo si tu maquina no coincide con los defaults.
+
+# multimetrico.seguridad.admin-inicial.legajo=admin
+# multimetrico.seguridad.jwt.minutos-de-vigencia=480
+
+# spring.datasource.url=jdbc:mysql://localhost:3307/multimetrico?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+# spring.datasource.username=multimetrico
+# spring.datasource.password=multimetrico
+
+# server.port=8082

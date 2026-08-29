@@ -1,5 +1,7 @@
 package com.lautaro.multimetrico.controller;
 
+import static com.lautaro.multimetrico.fixture.Identidades.admin;
+import static com.lautaro.multimetrico.fixture.Identidades.como;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -10,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -29,7 +32,12 @@ class PliegoControllerTest {
 
     private MockMvc mvc() {
         if (mockMvc == null) {
-            mockMvc = MockMvcBuilders.webAppContextSetup(contexto).build();
+            // springSecurity() mete la cadena de seguridad real en el MockMvc. Sin
+            // esto los tests pasan por al lado de toda la autorizacion: un GET sin
+            // token devolveria 200 y nadie se enteraria de que la regla no anda.
+            mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
+                    .apply(SecurityMockMvcConfigurers.springSecurity())
+                    .build();
         }
         return mockMvc;
     }
@@ -67,7 +75,8 @@ class PliegoControllerTest {
 
     @Test
     void cargaUnPliegoValido() throws Exception {
-        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(PLIEGO_SANO))
+        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(PLIEGO_SANO)
+                        .with(como(admin())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.periodo").value("2026-08"))
                 .andExpect(jsonPath("$.alcanceMaximo").value(3.5))
@@ -79,7 +88,8 @@ class PliegoControllerTest {
 
     @Test
     void rechazaUnPliegoConBandasSuperpuestas() throws Exception {
-        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(PLIEGO_SUPERPUESTO))
+        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(PLIEGO_SUPERPUESTO)
+                        .with(como(admin())))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.detalles", org.hamcrest.Matchers.hasSize(1)))
                 .andExpect(jsonPath("$.detalles[0]", org.hamcrest.Matchers.containsString("se pisan")));
@@ -89,11 +99,13 @@ class PliegoControllerTest {
     @Test
     void laRevisionDevuelveLosProblemasSinGuardar() throws Exception {
         mvc().perform(post("/api/pliegos/revision").contentType(MediaType.APPLICATION_JSON)
-                        .content(PLIEGO_SUPERPUESTO))
+                        .content(PLIEGO_SUPERPUESTO)
+                        .with(como(admin())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)));
 
-        mvc().perform(get("/api/pliegos/2026-09").param("campania", "CONVERGENTES"))
+        mvc().perform(get("/api/pliegos/2026-09").param("campania", "CONVERGENTES")
+                        .with(como(admin())))
                 .andExpect(status().isNotFound());
     }
 
@@ -112,14 +124,16 @@ class PliegoControllerTest {
                     ]
                   }]
                 }
-                """))
+                """)
+                        .with(como(admin())))
                 .andExpect(status().isCreated());
 
         mvc().perform(post("/api/pliegos/2026-10/evaluacion").param("campania", "FU")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "mediciones": { "FCR": 80.04 } }
-                                """))
+                                """)
+                        .with(como(admin())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alcanceTotal").value(0))
                 .andExpect(jsonPath("$.alcances[0].banda").value("[-∞, 80.1)"))
@@ -142,10 +156,12 @@ class PliegoControllerTest {
     void unPliegoYaCargadoNoSePisa() throws Exception {
         String pliego = PLIEGO_SANO.replace("2026-08", "2026-11");
 
-        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(pliego))
+        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(pliego)
+                        .with(como(admin())))
                 .andExpect(status().isCreated());
 
-        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(pliego))
+        mvc().perform(post("/api/pliegos").contentType(MediaType.APPLICATION_JSON).content(pliego)
+                        .with(como(admin())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.mensaje", org.hamcrest.Matchers.containsString("Ya hay un pliego")));
     }

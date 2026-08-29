@@ -87,4 +87,30 @@ public class ManejadorGlobalDeErrores {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.de(HttpStatus.BAD_REQUEST, e.getMessage(), List.of()));
     }
+
+    /**
+     * El login que no coincide.
+     *
+     * <p>El mensaje viene ya unificado desde el servicio: no dice si falló el
+     * legajo o la contraseña, porque distinguirlos convertiría al login en una
+     * forma de averiguar qué legajos existen.
+     */
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> credenciales(CredencialesInvalidasException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.de(HttpStatus.UNAUTHORIZED, e.getMessage(), List.of()));
+    }
+
+    /**
+     * El dato existe pero no es de quien lo pide.
+     *
+     * <p>403 y no 404: ver {@link AccesoDenegadoException}. El mensaje dice de
+     * quién es la fila, que es lo que le sirve a quien se equivocó de legajo, y
+     * no revela ningún número.
+     */
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<ErrorResponse> accesoDenegado(AccesoDenegadoException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.de(HttpStatus.FORBIDDEN, e.getMessage(), List.of()));
+    }
 }

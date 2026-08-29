@@ -9,14 +9,11 @@ el navegador y la sesión es tuya.
 
 ## Antes de empezar: qué vas a publicar
 
-**La aplicación no tiene autenticación.** Está anotado en `HANDOFF.md` como lo
-único que falta del alcance. Desplegarla con una URL pública significa que
-cualquiera que tenga el link ve todas las filas, cambia de equipo y carga
-pliegos.
+La aplicación **pide login** y el control es por fila: un asesor sólo ve la suya
+y un supervisor sólo su equipo. Sin token no se ve nada.
 
-Los datos son sintéticos —el seed no toca ninguna planilla real— así que no hay
-un problema de privacidad. Pero es una demo abierta, no un sistema en producción,
-y conviene tenerlo claro antes de compartir el link.
+Los datos siguen siendo sintéticos —el seed no toca ninguna planilla real—, así
+que aun con la URL pública no hay datos de nadie ahí adentro.
 
 ---
 
@@ -49,8 +46,24 @@ El servicio de la API necesita ver las variables del MySQL. En el panel, en
 | `MYSQLUSER` | `${{MySQL.MYSQLUSER}}` |
 | `MYSQLPASSWORD` | `${{MySQL.MYSQLPASSWORD}}` |
 
-`application.yml` los lee con esos nombres exactos, así que no hay que traducir
-nada. Si tu servicio de base se llama distinto de `MySQL`, cambiá ese prefijo.
+Y estas dos, que **no son referencias sino valores tuyos**:
+
+| Variable | Qué poner |
+|---|---|
+| `JWT_SECRETO` | Una cadena de 32 caracteres o más. Generala: `openssl rand -base64 48` |
+| `ADMIN_PASSWORD` | La contraseña del primer administrador |
+
+**Sin `JWT_SECRETO` la aplicación no arranca**, a propósito: un secreto con valor
+por defecto termina siendo el mismo en todas las instalaciones y está publicado en
+el repositorio. El error del arranque dice exactamente esto.
+
+`ADMIN_PASSWORD` sólo se usa la primera vez, cuando la tabla de usuarios está
+vacía. Sin ella la aplicación arranca igual pero **nadie puede entrar**, y lo avisa
+en el log con un recuadro difícil de no ver.
+
+`application.properties` las lee con esos nombres exactos, así que no hay que
+traducir nada. Si tu servicio de base se llama distinto de `MySQL`, cambiá ese
+prefijo.
 
 > Si preferís una sola variable, `MULTIMETRICO_DB_URL` pisa a las cinco. Tiene
 > que ser una URL **JDBC** (`jdbc:mysql://host:puerto/base`), no la `mysql://`
@@ -90,10 +103,14 @@ curl https://TU-URL.up.railway.app/api/pliegos
 La base arranca vacía y **sin datos la primera pantalla responde 404**:
 
 ```bash
-MULTIMETRICO_API=https://TU-URL.up.railway.app node scripts/datos-de-ejemplo.mjs
+MULTIMETRICO_API=https://TU-URL.up.railway.app \
+ADMIN_PASSWORD=la-que-pusiste-en-railway \
+node scripts/datos-de-ejemplo.mjs
 ```
 
 Esto sí lo podés correr desde tu máquina: el script habla con la API por HTTP.
+Entra como administrador antes de cargar nada, porque cargar el pliego, el padrón
+y las mediciones es de `ADMIN`.
 
 ---
 
@@ -110,9 +127,9 @@ del paso 1.4:
 
 **Por qué un rewrite y no una variable de entorno.** Con el rewrite, el navegador
 le pide todo a Vercel y Vercel reenvía a Railway: para la pantalla sigue siendo
-el mismo origen. Eso evita configurar CORS —superficie que esta aplicación, que
-no tiene autenticación, no necesita abrir— y además la URL del backend no queda
-escrita en el bundle. El costo es esta línea a mano.
+el mismo origen. Eso evita configurar CORS —superficie que no hace falta abrir si
+la arquitectura ya la evita— y además la URL del backend no queda escrita en el
+bundle. El costo es esta línea a mano.
 
 ### 2.2 Desplegar
 
@@ -134,7 +151,9 @@ en `src/lib/router.ts`, y es justamente el caso en que esa decisión paga.
 
 ## 3. Comprobar que quedó andando
 
-1. Abrí la URL de Vercel. Tiene que salir **Multimétrico** con quince asesores.
+1. Abrí la URL de Vercel. **Hoy vas a ver el cartel de error**: la API pide token
+   y la pantalla todavía no tiene login. Hasta que exista, se comprueba con
+   `curl` contra la API.
 2. Si ves el cartel de *"No se pudo contactar a la API"*, el rewrite apunta mal:
    revisá `vercel.json` y volvé a desplegar.
 3. Si ves un **404 de pliego**, la API responde pero la base está vacía: falta el
@@ -146,7 +165,11 @@ en `src/lib/router.ts`, y es justamente el caso en que esa decisión paga.
 
 ## Lo que este deploy no resuelve
 
-- **Sin autenticación.** Ver arriba.
+- **El frontend todavía no tiene pantalla de login.** La API pide token y la
+  pantalla no sabe pedirlo, así que desplegada va a mostrar el cartel de error en
+  todas las secciones. Es lo primero que falta.
+- **Los usuarios se crean por API**, con `POST /api/usuarios` desde una cuenta de
+  administrador. No hay pantalla para eso.
 - **El plan gratuito de Railway duerme o corta el servicio** según el uso. La
   primera carga después de un rato puede tardar; no es un error de la aplicación.
 - **La base de Railway es otra base.** Lo que cargues en local no viaja, y al

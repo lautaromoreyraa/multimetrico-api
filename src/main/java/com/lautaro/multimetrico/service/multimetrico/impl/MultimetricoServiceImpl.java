@@ -15,13 +15,16 @@ import com.lautaro.multimetrico.dto.multimetrico.ResumenDeEquipo;
 import com.lautaro.multimetrico.dto.multimetrico.TramoDeArriba;
 import com.lautaro.multimetrico.enumeration.CondicionDeTramo;
 import com.lautaro.multimetrico.enumeration.Metrica;
+import com.lautaro.multimetrico.enumeration.Rol;
 import com.lautaro.multimetrico.enumeration.Sentido;
+import com.lautaro.multimetrico.exception.AccesoDenegadoException;
 import com.lautaro.multimetrico.exception.RecursoNoEncontradoException;
 import com.lautaro.multimetrico.mapper.PadronMapper;
 import com.lautaro.multimetrico.service.medicion.MedicionService;
 import com.lautaro.multimetrico.service.multimetrico.MultimetricoService;
 import com.lautaro.multimetrico.service.padron.PadronService;
 import com.lautaro.multimetrico.service.pliego.PliegoService;
+import com.lautaro.multimetrico.service.seguridad.ControlDeAcceso;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -53,29 +56,37 @@ public class MultimetricoServiceImpl implements MultimetricoService {
     private final PadronService padrones;
     private final MedicionService mediciones;
     private final PadronMapper padronMapper;
+    private final ControlDeAcceso acceso;
 
     public MultimetricoServiceImpl(PliegoService pliegos, PadronService padrones,
-            MedicionService mediciones, PadronMapper padronMapper) {
+            MedicionService mediciones, PadronMapper padronMapper, ControlDeAcceso acceso) {
         this.pliegos = pliegos;
         this.padrones = padrones;
         this.mediciones = mediciones;
         this.padronMapper = padronMapper;
+        this.acceso = acceso;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Multimetrico delEquipo(YearMonth periodo, String lider, String campania) {
+        // Un supervisor que no pide un equipo en particular quiere el suyo, y se
+        // lo acota en vez de rechazarlo: el resultado es exactamente lo que ya
+        // tenía derecho a ver. Un admin sigue viendo la operación entera.
+        String liderVisible = acceso.liderEfectivo(lider);
+        acceso.exigirAccesoAlEquipo(liderVisible);
+
         Pliego pliego = pliegos.buscar(periodo, campania);
         Padron padron = padrones.buscar(periodo);
 
-        List<Asesor> equipo = lider == null || lider.isBlank()
+        List<Asesor> equipo = liderVisible == null || liderVisible.isBlank()
                 ? padron.asesores().stream().sorted(Comparator.comparing(Asesor::nombre)).toList()
-                : padron.equipoDe(lider);
+                : padron.equipoDe(liderVisible);
 
         if (equipo.isEmpty()) {
             throw new RecursoNoEncontradoException(
                     "El líder '%s' no tiene asesores en el padrón de %s. Los líderes cargados son: %s"
-                            .formatted(lider, periodo, String.join(", ", padron.lideres())));
+                            .formatted(liderVisible, periodo, String.join(", ", padron.lideres())));
         }
 
         // Una sola pasada por la historia del mes en vez de una por asesor.
@@ -87,19 +98,52 @@ public class MultimetricoServiceImpl implements MultimetricoService {
                                 MedicionesVigentes.ninguna())))
                 .toList();
 
-        return new Multimetrico(periodo, pliego.campania(), lider, pliego.alcanceMaximo(),
+        return new Multimetrico(periodo, pliego.campania(), liderVisible, pliego.alcanceMaximo(),
                 resumir(filas), filas);
     }
 
     @Override
     @Transactional(readOnly = true)
     public FilaDeMultimetrico deUnAsesor(YearMonth periodo, String legajo, String campania) {
+        // Primero lo que se puede decidir sin leer nada: un asesor que pide un
+        // legajo que no es el suyo se va acá, sin que la fila llegue a existir.
+        acceso.exigirAccesoA(legajo);
+
         Pliego pliego = pliegos.buscar(periodo, campania);
         Asesor asesor = padrones.buscar(periodo).porLegajo(legajo)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "El legajo %s no está en el padrón de %s".formatted(legajo, periodo)));
 
+        // Y ahora lo que necesitaba el padrón: de qué equipo es esta persona.
+        // Un supervisor pasó el control de arriba —su rol se lo permite— pero
+        // recién con el asesor en la mano se sabe si es de los suyos.
+        exigirMismoEquipo(asesor);
+
         return armarFila(pliego, asesor, mediciones.vigentesDe(periodo, legajo));
+    }
+
+    /**
+     * Un supervisor sólo ve a los suyos.
+     *
+     * <p>Vive acá y no en {@code ControlDeAcceso} porque la respuesta está en el
+     * padrón del período, que el control no conoce: quien ya tiene el asesor en
+     * la mano es este servicio. El token trae el equipo del supervisor; el padrón
+     * trae el del asesor; comparar los dos es todo lo que hay que hacer.
+     */
+    private void exigirMismoEquipo(Asesor asesor) {
+        acceso.quienPide()
+                .filter(quien -> quien.rol() == Rol.SUPERVISOR)
+                .filter(quien -> !mismoLider(quien.lider(), asesor.lider()))
+                .ifPresent(quien -> {
+                    throw new AccesoDenegadoException(
+                            "%s es del equipo de %s, y vos sos líder de %s."
+                                    .formatted(asesor.legajo(), asesor.lider(), quien.lider()));
+                });
+    }
+
+    private static boolean mismoLider(String uno, String otro) {
+        return uno != null && otro != null
+                && uno.trim().equalsIgnoreCase(otro.trim());
     }
 
     /**

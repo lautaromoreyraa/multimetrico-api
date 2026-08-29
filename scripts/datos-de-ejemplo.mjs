@@ -24,6 +24,17 @@
 const API = process.env.MULTIMETRICO_API ?? 'http://localhost:8082'
 const CAMPANIA = process.env.MULTIMETRICO_CAMPANIA ?? 'CONVERGENTE'
 
+// Cargar datos es de administrador, asi que el script entra como uno. Los
+// defaults son los del entorno de desarrollo; contra otra instalacion hay que
+// pasarlos:
+//
+//   ADMIN_LEGAJO=admin ADMIN_PASSWORD=... node scripts/datos-de-ejemplo.mjs
+const ADMIN_LEGAJO = process.env.ADMIN_LEGAJO ?? 'admin'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'admin'
+
+/** Lo completa el login y viaja en cada POST. */
+let token = null
+
 /* -- que meses -------------------------------------------------------------- */
 
 const hoy = new Date()
@@ -277,7 +288,10 @@ async function postear(ruta, cuerpo, que) {
   try {
     respuesta = await fetch(`${API}${ruta}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(cuerpo),
     })
   } catch {
@@ -294,6 +308,41 @@ async function postear(ruta, cuerpo, que) {
   console.error(`  FALLO   ${que} (HTTP ${respuesta.status})`)
   console.error(`  ${(await respuesta.text()).slice(0, 300)}`)
   fallas += 1
+}
+
+/**
+ * Entra como administrador y guarda el token.
+ *
+ * <p>Falla ruidosamente y corta. Un seed que sigue sin token daria una cascada de
+ * 401 que hay que leer entera para entender que el problema era uno solo.
+ */
+async function entrar() {
+  let respuesta
+  try {
+    respuesta = await fetch(`${API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legajo: ADMIN_LEGAJO, password: ADMIN_PASSWORD }),
+    })
+  } catch {
+    console.error('No se pudo contactar la API para entrar.')
+    process.exit(1)
+  }
+
+  if (!respuesta.ok) {
+    console.error(`No se pudo entrar como '${ADMIN_LEGAJO}' (HTTP ${respuesta.status}).`)
+    console.error('')
+    console.error('Si la base es nueva, el administrador se crea al arrancar la API y')
+    console.error('necesita que ADMIN_PASSWORD este definida en su entorno. Si ya existe,')
+    console.error('pasa las credenciales al script:')
+    console.error('')
+    console.error('  ADMIN_LEGAJO=admin ADMIN_PASSWORD=... node scripts/datos-de-ejemplo.mjs')
+    process.exit(1)
+  }
+
+  const cuerpo = await respuesta.json()
+  token = cuerpo.token
+  console.log(`Entrando como ${cuerpo.legajo} (${cuerpo.rol})\n`)
 }
 
 async function main() {
@@ -314,6 +363,8 @@ async function main() {
     console.error('Levantala con:  docker compose up -d  &&  ./mvnw spring-boot:run')
     process.exit(1)
   }
+
+  await entrar()
 
   for (const periodo of lista) {
     const esUltimoMes = periodo === lista[lista.length - 1]

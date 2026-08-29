@@ -4,6 +4,8 @@ import static com.lautaro.multimetrico.fixture.EscenarioDeEjemplo.CAMPANIA;
 import static com.lautaro.multimetrico.fixture.EscenarioDeEjemplo.mediciones;
 import static com.lautaro.multimetrico.fixture.EscenarioDeEjemplo.padron;
 import static com.lautaro.multimetrico.fixture.EscenarioDeEjemplo.pliego;
+import static com.lautaro.multimetrico.fixture.Identidades.admin;
+import static com.lautaro.multimetrico.fixture.Identidades.como;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -52,7 +55,12 @@ class MultimetricoControllerTest {
 
     private MockMvc mvc() {
         if (mockMvc == null) {
-            mockMvc = MockMvcBuilders.webAppContextSetup(contexto).build();
+            // springSecurity() mete la cadena de seguridad real en el MockMvc. Sin
+            // esto los tests pasan por al lado de toda la autorizacion: un GET sin
+            // token devolveria 200 y nadie se enteraria de que la regla no anda.
+            mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
+                    .apply(SecurityMockMvcConfigurers.springSecurity())
+                    .build();
         }
         return mockMvc;
     }
@@ -76,7 +84,7 @@ class MultimetricoControllerTest {
     @Test
     void devuelveElEquipoConElResumenAdelante() throws Exception {
         mvc().perform(get("/api/multimetrico/2028-03")
-                .param("lider", "PERALTA SILVIA").param("campania", CAMPANIA))
+                .param("lider", "PERALTA SILVIA").param("campania", CAMPANIA).with(como(admin())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alcanceMaximo").value(10.5))
                 .andExpect(jsonPath("$.resumen.asesores").value(2))
@@ -94,7 +102,7 @@ class MultimetricoControllerTest {
      */
     @Test
     void cadaMetricaSaleConSuPropioActualizadoAl() throws Exception {
-        mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA))
+        mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA).with(como(admin())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("AGUIRRE FLAVIA YAMILA"))
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='FCR')].actualizadoAl").value("2028-03-22"))
@@ -105,7 +113,7 @@ class MultimetricoControllerTest {
     /** El único dato accionable de la tabla: qué hacer para sumar más. */
     @Test
     void cadaMetricaDiceCuantoLeFaltaParaElTramoDeArriba() throws Exception {
-        mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA))
+        mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA).with(como(admin())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='TMO')].tramoDeArriba.objetivo").value(600))
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='TMO')].tramoDeArriba.distancia").value(12))
@@ -128,7 +136,7 @@ class MultimetricoControllerTest {
      */
     @Test
     void cadaMetricaSaleConSuUnidad() throws Exception {
-        mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA))
+        mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA).with(como(admin())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='TMO')].unidad").value("SEGUNDOS"))
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='FCR')].unidad").value("PORCENTAJE"))
@@ -137,7 +145,7 @@ class MultimetricoControllerTest {
 
     @Test
     void sinPliegoDelPeriodoResponde404DiciendoQueFaltaElPliego() throws Exception {
-        mvc().perform(get("/api/multimetrico/2028-09").param("campania", CAMPANIA))
+        mvc().perform(get("/api/multimetrico/2028-09").param("campania", CAMPANIA).with(como(admin())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.mensaje", org.hamcrest.Matchers.containsString("No hay pliego cargado")));
     }
@@ -145,7 +153,7 @@ class MultimetricoControllerTest {
     @Test
     void unLiderQueNoEstaResponde404ConLosLideresQueSiEstan() throws Exception {
         mvc().perform(get("/api/multimetrico/2028-03")
-                .param("lider", "CABRERA MONICA").param("campania", CAMPANIA))
+                .param("lider", "CABRERA MONICA").param("campania", CAMPANIA).with(como(admin())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.mensaje", org.hamcrest.Matchers.containsString("PERALTA SILVIA")));
     }
