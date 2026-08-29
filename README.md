@@ -69,7 +69,7 @@ nada que mostrar.
 
 Carga **de enero al mes en curso** —quince asesores, dos líderes, las cinco
 métricas, un pliego y un padrón por mes— en la campaña `CONVERGENTE`. Varios
-meses y no uno solo porque "Mis métricas" compara contra el mes anterior. No
+meses y no uno solo porque "Mis métricas" compara contra otro mes. No
 carga meses futuros: serían mediciones con una fecha de corte que todavía no
 ocurrió. Para otro rango, `node scripts/datos-de-ejemplo.mjs 2026-01 2026-12`.
 
@@ -200,9 +200,10 @@ resultado, y encima el que conviene ir a mirar. Y el color nunca viaja solo — 
 cero se escribe `0,0%` y el negativo lleva su signo—, así que los tres estados se
 distinguen sin depender de poder separar verde de ámbar de rojo.
 
-La segunda pantalla, **Mis métricas**, compara a una persona contra el mes
-anterior y muestra al pie cómo se movió cada métrica dentro del mes, carga por
-carga, con la vigente marcada.
+La segunda pantalla, **Mis métricas**, compara a una persona contra otro mes
+—el anterior por defecto, pero se elige cualquiera de los cargados— y muestra al
+pie cómo se movió cada métrica dentro del mes, carga por carga, con la vigente
+marcada.
 
 **Lo que falta es autenticación** (`PLAN.md` §5.6). Hoy cualquiera ve la fila de
 cualquiera, en la API y en la pantalla, y el selector de asesor de "Mi
