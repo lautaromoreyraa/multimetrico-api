@@ -189,9 +189,16 @@ un 0 ahí diría que se midió cero, que es una afirmación sobre el desempeño 
 alguien que nadie hizo.
 
 Los tres estados de una bonificación se leen de un barrido, por color y también
-por el número: **suma** en acento, **cero** en ámbar y **resta** en rojo. El cero
-va en ámbar y no en gris porque no es la ausencia de un dato: es un resultado, y
-encima el que conviene ir a mirar.
+por el número: **suma** en verde, **cero** en ámbar y **resta** en rojo. El mismo
+código se aplica al aporte de cada métrica, al total de la fila, al promedio del
+equipo y a **lo que paga cada banda en la pantalla del pliego**, que es donde se
+decide todo lo demás: así una banda en cero se nota mientras se la escribe y no
+tres pantallas más tarde.
+
+El cero va en ámbar y no en gris porque no es la ausencia de un dato: es un
+resultado, y encima el que conviene ir a mirar. Y el color nunca viaja solo — el
+cero se escribe `0,0%` y el negativo lleva su signo—, así que los tres estados se
+distinguen sin depender de poder separar verde de ámbar de rojo.
 
 La segunda pantalla, **Mis métricas**, compara a una persona contra el mes
 anterior y muestra al pie cómo se movió cada métrica dentro del mes, carga por
