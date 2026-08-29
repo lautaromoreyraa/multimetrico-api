@@ -1,0 +1,24 @@
+# Lo que no tiene que entrar al contexto del build.
+#
+# target/ es el mas importante: son cientos de megas de clases compiladas en la
+# maquina local que ademas podrian pisar las que compila la imagen.
+target/
+
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+
+# Documentacion y utilidades: no las necesita el build.
+*.md
+scripts/
+compose.yaml
+Dockerfile
+.dockerignore
+
+# Nunca, igual que en .gitignore: este proyecto se construye con datos
+# sinteticos y ninguna planilla real entra a ningun lado.
+*.xlsx
+*.xls
+*.csv

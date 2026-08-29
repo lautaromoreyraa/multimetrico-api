@@ -3,12 +3,18 @@ spring:
     name: multimetrico-api
 
   datasource:
-    # La base la levanta compose.yaml con un solo comando: docker compose up -d
-    # El 3307 y no el 3306: si hay un MySQL instalado en la maquina, el puerto de
-    # siempre ya esta tomado y el contenedor no levanta.
-    url: ${MULTIMETRICO_DB_URL:jdbc:mysql://localhost:3307/multimetrico?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
-    username: ${MULTIMETRICO_DB_USER:multimetrico}
-    password: ${MULTIMETRICO_DB_PASSWORD:multimetrico}
+    # Tres niveles, del mas explicito al mas comodo:
+    #
+    #   1. MULTIMETRICO_DB_URL     pisa todo. Es el escape para cualquier host.
+    #   2. MYSQLHOST y companias   los nombres que inyecta Railway al enlazar el
+    #                              servicio de MySQL. No hay que traducir nada.
+    #   3. los valores de abajo    el compose local: localhost:3307.
+    #
+    # El 3307 y no el 3306: si la maquina ya tiene un MySQL instalado, el puerto
+    # de siempre esta tomado y el contenedor no levanta.
+    url: ${MULTIMETRICO_DB_URL:jdbc:mysql://${MYSQLHOST:localhost}:${MYSQLPORT:3307}/${MYSQLDATABASE:multimetrico}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${MYSQLUSER:${MULTIMETRICO_DB_USER:multimetrico}}
+    password: ${MYSQLPASSWORD:${MULTIMETRICO_DB_PASSWORD:multimetrico}}
 
   jpa:
     hibernate:
@@ -34,9 +40,13 @@ spring:
     locations: classpath:db/migration
 
 server:
-  # 8080 es el portfolio original y 8081 el rediseno: este arranca en el siguiente
-  # libre para poder tener los tres levantados a la vez.
-  port: 8082
+  # En local, el 8082: el 8080 es el portfolio original y el 8081 el rediseno, y
+  # este arranca en el siguiente libre para tener los tres levantados a la vez.
+  #
+  # En un PaaS el puerto no se elige: la plataforma lo inyecta en PORT y espera
+  # que la aplicacion escuche ahi. Ignorarlo es el motivo numero uno por el que
+  # un deploy que compila igual no responde nunca.
+  port: ${PORT:8082}
 
 # Lo unico ajustable del procesamiento de importaciones. Los valores de abajo son
 # los que aplica PropiedadesDeImportacion por defecto; estan escritos igual para
