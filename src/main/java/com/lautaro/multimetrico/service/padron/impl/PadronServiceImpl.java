@@ -74,6 +74,24 @@ public class PadronServiceImpl implements PadronService {
 
     @Override
     @Transactional
+    public Asesor agregarAsesor(YearMonth periodo, Asesor nuevo) {
+        Padron padron = buscar(periodo);
+        Asesor agregado = padron.agregar(nuevo);
+        padrones.save(padron);
+        return agregado;
+    }
+
+    @Override
+    @Transactional
+    public Asesor corregirAsesor(YearMonth periodo, String legajo, String nombre, String lider) {
+        Padron padron = buscar(periodo);
+        Asesor corregido = padron.corregir(legajo, nombre, lider);
+        padrones.save(padron);
+        return corregido;
+    }
+
+    @Override
+    @Transactional
     public Asesor quitarAsesor(YearMonth periodo, String legajo) {
         Padron padron = buscar(periodo);
         Asesor quitado = padron.quitar(legajo);

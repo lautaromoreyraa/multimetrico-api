@@ -15,17 +15,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * Sacar a una persona de la nómina del mes.
+ * Alta, baja y modificación de la nómina del mes.
  *
  * <p>Existe porque corregir una sola fila no puede obligar a recargar el padrón
- * entero. Antes de esto, quitar a alguien significaba volver a subir las
- * cincuenta personas.
+ * entero. Antes de esto, cualquier cambio significaba volver a subir las
+ * cincuenta personas desde el archivo.
  *
  * <p><b>Período propio por test</b>: la base H2 se comparte entre clases y entre
  * métodos, así que dos tests que toquen el padrón del mismo mes se ven entre sí.
  */
 @SpringBootTest
-class BajaDeAsesorTest {
+class NominaTest {
 
     private static final AtomicInteger MES = new AtomicInteger();
 
@@ -42,6 +42,76 @@ class BajaDeAsesorTest {
                 new Asesor("z200", "MIÑO HECTOR BAUTISTA", "PERALTA SILVIA"),
                 new Asesor("z300", "SOSA ANA MARIA", "LEDESMA JORGE"))));
     }
+
+
+    // ── alta ─────────────────────────────────────────────────────────────────
+
+    @Test
+    void agregaAUnaPersonaQueFaltaba() {
+        padrones.agregarAsesor(periodo, new Asesor("z400", "OJEDA SEBASTIAN", "LEDESMA JORGE"));
+
+        assertThat(padrones.buscar(periodo).asesores())
+                .extracting(Asesor::legajo)
+                .containsExactlyInAnyOrder("z100", "z200", "z300", "z400");
+    }
+
+    /** Y aparece en su equipo, que es para lo que se la agregó. */
+    @Test
+    void laPersonaAgregadaApareceEnSuEquipo() {
+        padrones.agregarAsesor(periodo, new Asesor("z400", "OJEDA SEBASTIAN", "PERALTA SILVIA"));
+
+        assertThat(padrones.equipo(periodo, "PERALTA SILVIA"))
+                .extracting(Asesor::legajo)
+                .contains("z400");
+    }
+
+    /**
+     * Un legajo repetido se rechaza nombrando a quien ya lo tiene.
+     *
+     * <p>Dos filas con el mismo legajo hacen que las mediciones de una se le
+     * atribuyan a la otra. Es el mismo error que ya rechaza el constructor del
+     * padrón, y da el mismo mensaje.
+     */
+    @Test
+    void unLegajoRepetidoSeRechaza() {
+        assertThatThrownBy(() ->
+                padrones.agregarAsesor(periodo, new Asesor("z100", "OTRA PERSONA", "LEDESMA JORGE")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("z100")
+                .hasMessageContaining("AGUIRRE FLAVIA YAMILA");
+    }
+
+    // ── modificación ─────────────────────────────────────────────────────────
+
+    @Test
+    void corrigeElNombre() {
+        padrones.corregirAsesor(periodo, "z100", "AGUIRRE FLAVIA Y.", "PERALTA SILVIA");
+
+        assertThat(padrones.buscar(periodo).porLegajo("z100"))
+                .get()
+                .satisfies(asesor -> assertThat(asesor.nombre()).isEqualTo("AGUIRRE FLAVIA Y."));
+    }
+
+    /** Mudar a alguien de equipo es el caso que más se usa. */
+    @Test
+    void mudarDeEquipoLaSacaDeUnoYLaPoneEnElOtro() {
+        padrones.corregirAsesor(periodo, "z100", "AGUIRRE FLAVIA YAMILA", "LEDESMA JORGE");
+
+        assertThat(padrones.equipo(periodo, "PERALTA SILVIA"))
+                .extracting(Asesor::legajo)
+                .containsExactly("z200");
+        assertThat(padrones.equipo(periodo, "LEDESMA JORGE"))
+                .extracting(Asesor::legajo)
+                .containsExactlyInAnyOrder("z100", "z300");
+    }
+
+    @Test
+    void corregirUnLegajoQueNoEstaFalla() {
+        assertThatThrownBy(() -> padrones.corregirAsesor(periodo, "no-existe", "X", "Y"))
+                .isInstanceOf(NoSuchElementException.class);
+    }
+
+    // ── baja ─────────────────────────────────────────────────────────────────
 
     @Test
     void sacaAlAsesorDeLaNomina() {
