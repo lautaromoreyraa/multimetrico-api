@@ -90,12 +90,15 @@ public class PliegoServiceImpl implements PliegoService {
     /**
      * Evalúa las mediciones de un asesor contra un pliego.
      *
-     * <p>Acepta que falten métricas. Es lo normal y no un error: las métricas se
-     * actualizan por separado y cada una tiene su propia fecha de corte, así que
-     * a mitad de semana es habitual tener el TMO al viernes pasado y el FCR al
-     * lunes anterior. Lo que falta se informa como faltante en vez de contarse
-     * como cero, que sería inventarle un mal desempeño a alguien por un archivo
-     * que todavía no llegó.
+     * <p>Acepta que falten métricas. Es lo normal y no un error: cada métrica
+     * llega en su propio archivo y con su propia fecha de corte, así que a mitad
+     * de mes es habitual tener el TMO al 21 y el FCR al 16, y que a alguien
+     * todavía no le haya llegado el NPS.
+     *
+     * <p>Lo que falta se informa como faltante y <b>no entra en {@code alcances}</b>,
+     * que es lo que permite distinguir "no hay valor" de "hay un valor que paga
+     * cero". Para el total da igual: no sumarlo es lo mismo que sumarle cero, y
+     * cero es lo que una métrica sin archivo bonifica.
      *
      * <p>Un valor que no cae en ninguna banda no se tapa con un cero: se informa
      * como fuera de escala. Sobre un pliego validado no puede pasar, y si pasa es

@@ -23,13 +23,20 @@ import java.util.Map;
  * la que recalcular marzo dentro de seis meses devuelve lo mismo que devolvió en
  * marzo.
  *
- * <h2>Los faltantes viajan aparte y no suman cero</h2>
+ * <h2>Los faltantes viajan aparte, pero bonifican cero</h2>
  *
- * <p>{@code alcanceTotal} es la suma de lo que se pudo calcular. Un total de 9%
- * con dos métricas sin cargar no es lo mismo que un 9% con todo cargado, y el
- * que lo mira tiene que poder distinguirlo: por eso {@code faltantes} está al
- * lado del total y no escondido. Rellenar con ceros daría un número que se ve
- * completo y es mentira.
+ * <p>Son dos cosas distintas y conviene no mezclarlas.
+ *
+ * <p><b>Lo que se cobra</b>: una métrica sin archivo paga cero.
+ * {@code alcanceTotal} ya lo refleja —sumar solo lo presente es idéntico a
+ * sumar cero por lo ausente— y la fila entra en los promedios del equipo como
+ * cualquier otra.
+ *
+ * <p><b>Lo que se muestra</b>: el valor medido no existe, y ahí sí hay que
+ * distinguir. Por eso {@code faltantes} viaja al lado y no se lo rellena con un
+ * número: escribir un 0 en la columna del valor diría que se midió cero, que es
+ * una afirmación sobre el desempeño de alguien que nadie hizo. La pantalla
+ * muestra la celda vacía y el cero solo donde corresponde, en lo que paga.
  *
  * @param completa todas las métricas del pliego tienen medición y todas cayeron
  *     en una banda

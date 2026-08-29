@@ -65,10 +65,19 @@ sí la necesita.
 
 El tercer comando es el que separa ver la pantalla de ver un 404: la primera
 pantalla es la tabla del equipo entero, y sin pliego, padrón y mediciones no hay
-nada que mostrar. Carga un mes sintético completo —quince asesores, dos líderes,
-las cinco métricas— con tres huecos y un corte atrasado **a propósito**, que son
-las dos situaciones que la tabla existe para hacer visibles. Correrlo dos veces
-es inofensivo.
+nada que mostrar.
+
+Carga **de enero al mes en curso** —quince asesores, dos líderes, las cinco
+métricas, un pliego y un padrón por mes— en la campaña `CONVERGENTE`. Varios
+meses y no uno solo porque "Mis métricas" compara contra el mes anterior. No
+carga meses futuros: serían mediciones con una fecha de corte que todavía no
+ocurrió. Para otro rango, `node scripts/datos-de-ejemplo.mjs 2026-01 2026-12`.
+
+Dos cosas que hace a propósito y no son ruido: cada métrica tiene **una sola
+fecha de corte por mes**, distinta de las otras, porque cada archivo llega su
+propio día; y en el último mes hay tres personas sin archivo en alguna métrica,
+que es lo que ejercita la regla de que una métrica sin archivo bonifica cero.
+Correrlo dos veces es inofensivo.
 
 El contenedor puede existir apagado de una sesión anterior: si `compose up`
 protesta que el nombre está en uso, `docker start multimetrico-mysql` lo revive
@@ -160,10 +169,15 @@ multimétrico de equipo y de asesor, importación por perfil configurable y
 persistencia en MySQL con Flyway. 134 tests en verde, y las cinco pantallas del
 frontend verificadas en el navegador contra la API corriendo.
 
-La primera pantalla es la tabla del equipo entero: una fila por asesor, una
-columna por métrica, la bonificación pegada al nombre y la fecha de corte en cada
-encabezado. Una métrica sin medición se marca faltante y **no se rellena con
-cero**, así que un total incompleto se ve incompleto.
+La primera pantalla es el multimétrico del equipo: una fila por asesor y, por
+cada métrica, **dos columnas** —el valor medido y lo que ese valor paga—, con la
+fecha de corte de esa métrica en el encabezado y el promedio del equipo fijo al
+pie.
+
+Una métrica sin archivo **bonifica cero**: es lo que se cobra si el archivo no
+llegó. Lo que no se rellena es el valor medido, que se muestra vacío — escribir
+un 0 ahí diría que se midió cero, que es una afirmación sobre el desempeño de
+alguien que nadie hizo.
 
 **Lo que falta es autenticación** (`PLAN.md` §5.6). Hoy cualquiera ve la fila de
 cualquiera, en la API y en la pantalla, y el selector de asesor de "Mi

@@ -3,8 +3,11 @@
 Estado vivo del proyecto. Se actualiza cada vez que una pieza queda terminada.
 El **qué** y el **por qué** están en `PLAN.md`; acá va el **cómo viene**.
 
-Última actualización: 2026-08-28. **El MVP anda de punta a punta y alguien por
-fin lo miró en el navegador.** Falta seguridad y nada más.
+Última actualización: 2026-08-28, noche. **El MVP anda de punta a punta.**
+Falta seguridad y nada más.
+
+La última ronda cambió reglas de producto, no sólo pantallas. Lo importante
+está en "Lo que cambió de criterio"; leelo antes de tocar el multimétrico.
 
 ---
 
@@ -23,6 +26,46 @@ fin lo miró en el navegador.** Falta seguridad y nada más.
 
 **Total actual: 134 tests, en verde.**
 
+## Lo que cambió de criterio
+
+Tres decisiones que estaban escritas al revés en el código y en este archivo. No
+las "arregles" de vuelta.
+
+**1. Una métrica sin archivo bonifica cero.** Antes el proyecto defendía lo
+contrario —"un 9% con dos archivos sin llegar no es lo mismo que un 9%
+completo"— y por eso la fila quedaba marcada incompleta y salía de los
+promedios. Operativamente no se sostiene: si al día 10 no llegó el NPS, el NPS
+no bonifica, y esa persona cobra lo que cobra. `alcanceTotal` **ya se comportaba
+así** —sumar sólo lo presente es idéntico a sumar cero por lo ausente—, así que
+no hubo que tocar el cálculo: lo que estaba mal era la lectura alrededor.
+
+Lo que **sí** se mantiene es que `faltantes` viaje aparte de `metricas`. Es lo
+único que deja distinguir "no hay archivo" de "hay un valor que paga cero", y una
+vez aplastados no se separan más. La pantalla muestra el valor vacío y el cero
+sólo en la columna de lo que paga.
+
+**2. Una métrica tiene una sola fecha de corte por mes.** Cada métrica llega en
+su propio archivo, ese archivo trae a todo el equipo con el mismo corte, y el día
+varía entre métricas y entre meses según cuándo lo mande la empresa. Se cayó todo
+lo que trataba los "cortes mezclados" como algo normal: el aviso de arriba de la
+tabla y la fecha por celda. El encabezado de cada métrica dice su fecha y con eso
+alcanza.
+
+**Ojo**: el backend no lo valida. `ResumenDeEquipo.cortesPorMetrica` sigue siendo
+un `Set<LocalDate>` y la pantalla toma el primero. Quien lo garantiza hoy es el
+seed, que manda **un lote por métrica**. Si alguna vez una importación parte una
+métrica en dos cortes, la pantalla va a mostrar sólo uno sin avisar. Convertirlo
+en una validación de verdad es trabajo pendiente.
+
+**3. Las mediciones no tienen campaña.** No es nuevo, pero costó una hora
+descubrirlo: `Medicion` se identifica por período, legajo y métrica, así que las
+mediciones cargadas para `RESIDENCIAL` son **las mismas** que lee el multimétrico
+de `CONVERGENTE` del mismo mes. Dos seeds con campañas distintas sobre el mismo
+período se pisan, y gana el corte más reciente. Si vas a sembrar otra campaña,
+usá otro período o vaciá la base.
+
+---
+
 ## El MVP, andando
 
 Las cinco pantallas se abrieron en Chrome contra la API corriendo y la base de
@@ -38,19 +81,28 @@ node scripts/datos-de-ejemplo.mjs  # el mes cargado
 cd ../multimetrico-frontend && npm run dev
 ```
 
-**`scripts/datos-de-ejemplo.mjs` es nuevo y es la pieza que faltaba para poder
-mirar el proyecto.** La base del compose puede tener datos viejos de alguna
-verificación anterior —tenía un pliego de `2026-12 / CONVERGENTES` y otro de
-`2026-08 / CONVERGENTES`—, pero el frontend abre en `2026-08 / RESIDENCIAL`, así
-que la primera pantalla daba 404 y parecía rota. El script carga ese período
-completo: el pliego sano, quince asesores en dos equipos y las cinco métricas.
+**`scripts/datos-de-ejemplo.mjs` es la pieza que hace mirable el proyecto.**
+Sin él la primera pantalla responde 404 y parece rota cuando lo único que pasa es
+que no hay nada cargado.
 
-Lo que carga está pensado para que la pantalla muestre algo: los valores se
-sortean con un pseudoazar **sembrado por legajo**, así que dos corridas dan los
-mismos números y la captura de ayer sigue siendo comparable. Y deja huecos a
-propósito —dos personas sin FCR, una sin baja convergente, y dos que quedaron
-afuera del último archivo de NPS— porque son las dos situaciones que la tabla
-existe para hacer visibles. Con todo completo, la pantalla no demuestra nada.
+Carga **de enero al mes en curso** en la campaña `CONVERGENTE`, con su pliego y
+su padrón por mes. Varios meses porque "Mis métricas" compara contra el anterior;
+no carga meses futuros, que serían mediciones con una fecha de corte que todavía
+no ocurrió. Acepta un rango: `node scripts/datos-de-ejemplo.mjs 2026-01 2026-12`.
+
+Tres decisiones del seed que no son ruido:
+
+- Los valores salen de un pseudoazar **sembrado por legajo y mes**, así que dos
+  corridas dan los mismos números y la captura de ayer sigue siendo comparable.
+- Cada asesor tiene una **línea de base propia** que pesa el doble que el
+  movimiento del mes. Si cada mes fuera un sorteo independiente, la comparación
+  contra el mes anterior no diría nada: nadie "viene mejorando", cada mes sería
+  otra persona.
+- **Un lote por métrica**, no uno solo con todo adentro. Es lo que garantiza una
+  sola fecha de corte por métrica, y es como llegan los archivos de verdad.
+
+En el último mes deja tres personas sin archivo en alguna métrica: es lo que
+ejercita la regla de que una métrica sin archivo bonifica cero.
 
 Ojo con dos cosas que costaron un rato:
 
@@ -155,7 +207,7 @@ En orden de impacto:
 visible para quien evalúe el proyecto. Hoy cualquiera ve la fila de cualquiera,
 en el backend y en la pantalla. Lo importante es que el control es **por fila, no
 por endpoint**: un asesor que pide la fila de otro recibe 403, nunca la fila. En
-el frontend, "Mi multimétrico" tiene hoy un selector de asesor que hay que
+el frontend, "Mis métricas" tiene hoy un selector de asesor que hay que
 reemplazar por el legajo del token.
 
 **2. El frontend no tiene un solo test.** No hay infraestructura montada. Es lo
@@ -168,10 +220,14 @@ tacharon.
 
 ## Cómo dejarlo andando para mirarlo
 
-Con el contenedor arriba y la app corriendo, la base ya tiene los datos de la
-verificación de persistencia: pliego **2026-08 / RESIDENCIAL** y un padrón con dos
-equipos, **DIEGO SALAZAR** y **MARTINA REYES**. Hay que usar esos nombres de líder
-en el selector; con cualquier otro la API responde 404 y lista los que sí existen.
+Los cuatro comandos de "El MVP, andando" y listo. El seed deja la campaña
+`CONVERGENTE` con dos equipos, **MARTINA REYES** (ocho) y **DIEGO SALAZAR**
+(siete). Son los dos únicos líderes: con cualquier otro nombre la API responde
+404 y lista los que sí existen.
+
+El frontend abre en `2026-08 / CONVERGENTE`, que es lo que carga el seed por
+defecto. Si cambiás el período a un mes sin datos vas a ver el 404 del pliego,
+que es correcto y no un bug.
 
 ---
 
