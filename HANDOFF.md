@@ -8,8 +8,9 @@ el **cómo viene** y, sobre todo, **qué no volver a romper**.
 **El backend está completo y subido.** Entró la seguridad, y con eso el alcance
 original quedó cerrado.
 
-Leer es público y escribir pide sesión. Las tres pantallas de carga viven ahora
-en un **panel de administración**.
+Leer es público y escribir pide sesión. **El pliego se ve sin entrar** —es la
+regla con la que se le paga a la gente y tiene que poder discutirse— y su editor
+vive en el **panel de administración**, junto con la importación y los perfiles.
 
 Antes de tocar el multimétrico, leé "Reglas de producto". Varias invierten lo que
 el código defendía hace dos días, y los comentarios viejos ya no están pero la
@@ -458,6 +459,10 @@ tests y no en producción.
 ### frontend
 
 Cinco pantallas, todas contra la API real y verificadas en el navegador.
+
+**Pliego** — los tramos del mes, de lectura y sin sesión: una escala por métrica
+con lo que paga cada banda. Ver y editar no son el mismo permiso, así que el
+editor está en el panel.
 
 **Multimétrico** — una fila por asesor y, por cada métrica, **dos columnas**: el
 valor medido y lo que ese valor paga, del mismo tamaño. Son cosas distintas —616
