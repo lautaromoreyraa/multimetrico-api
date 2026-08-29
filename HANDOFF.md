@@ -5,8 +5,13 @@ el **cómo viene** y, sobre todo, **qué no volver a romper**.
 
 Última actualización: 2026-08-28, noche.
 
-**El backend está completo y subido.** Entró la seguridad, y con eso el alcance
-original quedó cerrado.
+**La aplicación está desplegada y andando.**
+
+- Pantalla: <https://multimetrico-frontend-98wihg84r.vercel.app>
+- API: <https://multimetrico-api-production.up.railway.app>
+
+El alcance original quedó cerrado. Ver `DEPLOY.md` para el estado del despliegue
+y lo que costó levantarlo.
 
 Leer es público y escribir pide sesión. **El pliego se ve sin entrar** —es la
 regla con la que se le paga a la gente y tiene que poder discutirse— y su editor
@@ -136,16 +141,28 @@ otra campaña, usá otro período o vaciá la base. Esto costó una hora.
 
 ## Por dónde seguir
 
-**1. El deploy**, que quedó a medias: la configuración está lista y verificada
-—ver `DEPLOY.md`— pero nadie corrió `railway up` todavía.
+> **Cada punto dice en qué repo se toca.** Hay una rutina programada que corre
+> cada 4 horas con **acceso sólo a `multimetrico-api`**, así que un punto marcado
+> `[frontend]` no lo puede hacer: tiene que saltearlo y tomar el siguiente
+> marcado `[api]`.
 
-**2. El corte único por métrica no está validado en el backend.** Ver abajo. Hoy
-lo garantiza el seed y nada más.
+**1. `[api]` El corte único por métrica no está validado.** Es la regla mejor
+documentada del proyecto y la única que hoy no defiende nadie más que el seed. Si
+una importación parte una métrica en dos cortes, la pantalla muestra uno solo
+**sin avisar**. Ver "Un corte por métrica" abajo. Es el trabajo mejor acotado que
+queda: una validación, su mensaje de error y sus tests.
 
-**3. El frontend no tiene un solo test.** No hay infraestructura montada.
+**2. `[frontend]` No hay un solo test.** No hay infraestructura montada — hace
+falta elegir el runner y montarlo antes de escribir nada. Es lo más grande que
+queda.
 
-**4. No hay pantalla para crear usuarios.** Se hace con `POST /api/usuarios`
-desde una cuenta de administrador.
+**3. `[frontend]` No hay pantalla para crear usuarios.** Se hace con
+`POST /api/usuarios` desde una cuenta de administrador. El backend ya está.
+
+**4. `[api]` Spring loguea "Using generated security password" al arrancar.** Es
+ruido del auto-config por defecto y **no es un agujero** —la cadena no habilita
+form login ni basic auth, y la autorización la gobierna `SeguridadConfig`— pero
+un log así en producción se lee mal. Conviene desactivar esa auto-config.
 
 **5. La deuda de la lista de más abajo.**
 
