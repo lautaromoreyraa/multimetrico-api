@@ -8,9 +8,8 @@ el **cómo viene** y, sobre todo, **qué no volver a romper**.
 **El backend está completo y subido.** Entró la seguridad, y con eso el alcance
 original quedó cerrado.
 
-> **La pantalla no funciona ahora mismo.** La API pide token y el frontend
-> todavía no sabe pedirlo, así que todas las secciones muestran el cartel de
-> error. Es lo primero de "Por dónde seguir".
+Leer es público y escribir pide sesión. Las tres pantallas de carga viven ahora
+en un **panel de administración**.
 
 Antes de tocar el multimétrico, leé "Reglas de producto". Varias invierten lo que
 el código defendía hace dos días, y los comentarios viejos ya no están pero la
@@ -28,10 +27,10 @@ intuición sigue tirando para el otro lado.
 | `multimetrico` | ✅ | (idem) | Incluye el tramo de arriba, accionable |
 | `importacion` | ✅ | 8 | Perfil configurable; ninguna fila se pierde |
 | `persistencia` | ✅ | 24 | MySQL + Flyway; los tests corren contra H2 en modo MySQL |
-| `seguridad` | ✅ | 14 | JWT y control **por fila**. Falta la pantalla de login |
+| `seguridad` | ✅ | 13 | JWT. Leer es público, escribir es de ADMIN |
 | frontend | ✅ | **0** | `../multimetrico-frontend`. Cinco pantallas, sin mocks, revisadas en el navegador. Sin un solo test |
 
-**148 tests, en verde.**
+**147 tests, en verde.**
 
 ## Los dos repos
 
@@ -60,7 +59,7 @@ node scripts/datos-de-ejemplo.mjs  # los datos, sin esto la pantalla da 404
 cd ../multimetrico-frontend && npm run dev   # la pantalla, en el 5174
 ```
 
-`./mvnw test` corre los 148 y **no necesita la base levantada**: usan H2 en modo
+`./mvnw test` corre los 147 y **no necesita la base levantada**: usan H2 en modo
 de compatibilidad MySQL con las mismas migraciones de Flyway. La aplicación sí la
 necesita.
 
@@ -122,21 +121,18 @@ otra campaña, usá otro período o vaciá la base. Esto costó una hora.
 
 ## Por dónde seguir
 
-**1. La pantalla de login.** El backend ya pide token y el frontend no sabe
-pedirlo, así que **hoy la pantalla no funciona**: todas las secciones muestran el
-cartel de error. Hace falta una pantalla de login, guardar el token, mandarlo en
-cada request y manejar el 401 volviendo al login.
-
-Además, "Mis métricas" tiene un selector de asesor que con seguridad ya no tiene
-sentido para un ASESOR: tiene que mostrar el legajo del token. Para un SUPERVISOR
-sí sigue sirviendo, acotado a su equipo.
+**1. El deploy**, que quedó a medias: la configuración está lista y verificada
+—ver `DEPLOY.md`— pero nadie corrió `railway up` todavía.
 
 **2. El corte único por métrica no está validado en el backend.** Ver abajo. Hoy
 lo garantiza el seed y nada más.
 
 **3. El frontend no tiene un solo test.** No hay infraestructura montada.
 
-**4. La deuda de la lista de más abajo.**
+**4. No hay pantalla para crear usuarios.** Se hace con `POST /api/usuarios`
+desde una cuenta de administrador.
+
+**5. La deuda de la lista de más abajo.**
 
 ---
 
@@ -164,29 +160,28 @@ cero sólo en la columna de lo que paga: escribir un 0 en la columna del valor
 diría que se midió cero, que es una afirmación sobre el desempeño de alguien que
 nadie hizo.
 
-### Quién ve qué
+### Leer es público, escribir pide sesión
 
-El requisito estaba escrito así y se cumplió al pie de la letra: **un asesor que
-pide la fila de otro recibe 403, nunca la fila**.
+**La línea está en el verbo, no en el recurso.** Todos los `GET` son públicos y
+todo lo que modifica datos pide una cuenta de `ADMIN`. La única excepción es
+`/api/usuarios`: listarlos también es leer, pero es leer quién tiene acceso.
 
-| Rol | Ve |
-|---|---|
-| `ASESOR` | Su fila y nada más. No llega a la tabla del equipo |
-| `SUPERVISOR` | Las filas de su equipo. Sin pedir equipo, obtiene el suyo |
-| `ADMIN` | Todo, y es el único que carga pliegos, padrones y mediciones |
+**Qué se resignó.** El PLAN §5.6 pedía control **por fila** —que un asesor viera
+sólo la suya— y llegó a estar implementado. Se sacó cuando la lectura pasó a ser
+pública: hoy cualquiera que tenga la URL ve la tabla entera. A cambio, la pantalla
+se muestra sin pedirle nada a nadie.
 
-**El control es por fila, no por endpoint**, y esa es la parte que importa. Una
-regla por endpoint no puede cumplir el requisito: `/asesores/10419` es el mismo
-endpoint sin importar de quién sea el 10419. Por eso hay dos capas:
+Lo que sostiene esa decisión es que **los datos son sintéticos**. El día que
+entren números de una operación real, esto tiene que volver a cerrarse. No es
+rehacerlo: `Rol` sigue distinguiendo ASESOR de SUPERVISOR, `Usuario` sigue
+guardando el equipo, y el control era una llamada desde `MultimetricoServiceImpl`
+antes de leer nada. Está anotado en el javadoc de `ControlDeAcceso`.
 
-- `SeguridadConfig` decide a qué endpoint se llega. Es lo que un rol puede
-  contestar.
-- `ControlDeAcceso` decide de quién es el dato, y vive **adentro del servicio**.
-  Está antes de leer nada, así que la fila del otro no llega a construirse.
-
-La comprobación de equipo de un supervisor no está en `ControlDeAcceso` sino en
-`MultimetricoServiceImpl`: la respuesta está en el padrón del período, que el
-control no conoce, y quien ya tiene el asesor en la mano es el servicio.
+> **El orden de las reglas importa y es fácil de romper.** Spring evalúa de
+> arriba abajo y se queda con la primera que coincide, así que
+> `/api/usuarios/**` tiene que ir **antes** del `permitAll` de los GET. Cuando
+> estaban al revés, listar usuarios quedaba abierto. Hay un test que lo afirma, y
+> es el que lo encontró.
 
 **Tres decisiones que parecen de más y no lo son:**
 

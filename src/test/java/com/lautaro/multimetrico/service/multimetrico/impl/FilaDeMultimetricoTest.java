@@ -25,11 +25,6 @@ import org.junit.jupiter.api.Test;
  * quien elige el pliego del período y busca las vigentes es el método público que
  * lo llama. Que se pueda construir así <b>es</b> lo que se está probando.
  *
- * <p>El control de acceso entra en null como los demás colaboradores: armarFila
- * no autoriza nada, y quien lo hace es el método público que la llama. Si algún
- * día esto empezara a fallar con un NullPointerException, sería la señal de que
- * el control se metió en el cálculo, que es donde no va.
- *
  * <p>Las vigentes llegan ya resueltas. Cuál de dos cargas gana es una regla de
  * {@code MedicionService} y tiene sus propios tests; mezclarla acá haría que este
  * test fallara por dos motivos distintos.
@@ -39,7 +34,7 @@ class FilaDeMultimetricoTest {
     private static final YearMonth ENERO = YearMonth.of(2027, 1);
 
     private final MultimetricoServiceImpl multimetrico = new MultimetricoServiceImpl(
-            new PliegoServiceImpl(null, null), null, null, new PadronMapperImpl(), null);
+            new PliegoServiceImpl(null, null), null, null, new PadronMapperImpl());
 
     private final Pliego pliego = pliego(ENERO);
     private final Asesor flavia = padron(ENERO).porLegajo("u100").orElseThrow();

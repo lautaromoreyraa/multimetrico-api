@@ -9,11 +9,13 @@ el navegador y la sesión es tuya.
 
 ## Antes de empezar: qué vas a publicar
 
-La aplicación **pide login** y el control es por fila: un asesor sólo ve la suya
-y un supervisor sólo su equipo. Sin token no se ve nada.
+**El multimétrico se ve sin entrar.** Es a propósito: la pantalla tiene que poder
+mostrarse sin pedirle nada a nadie. Lo que pide sesión es el panel de
+administración, o sea todo lo que carga datos.
 
-Los datos siguen siendo sintéticos —el seed no toca ninguna planilla real—, así
-que aun con la URL pública no hay datos de nadie ahí adentro.
+Los datos son sintéticos —el seed no toca ninguna planilla real—, así que aun con
+la URL pública no hay datos de nadie ahí adentro. Si alguna vez entran números
+reales, esto hay que volver a cerrarlo; está anotado en `HANDOFF.md`.
 
 ---
 
@@ -151,9 +153,9 @@ en `src/lib/router.ts`, y es justamente el caso en que esa decisión paga.
 
 ## 3. Comprobar que quedó andando
 
-1. Abrí la URL de Vercel. **Hoy vas a ver el cartel de error**: la API pide token
-   y la pantalla todavía no tiene login. Hasta que exista, se comprueba con
-   `curl` contra la API.
+1. Abrí la URL de Vercel. Tiene que salir **Multimétrico** con quince asesores,
+   sin pedir nada. En **Administración** tiene que aparecer el login: entrá con
+   el legajo `admin` y la `ADMIN_PASSWORD` que pusiste en Railway.
 2. Si ves el cartel de *"No se pudo contactar a la API"*, el rewrite apunta mal:
    revisá `vercel.json` y volvé a desplegar.
 3. Si ves un **404 de pliego**, la API responde pero la base está vacía: falta el
@@ -165,9 +167,6 @@ en `src/lib/router.ts`, y es justamente el caso en que esa decisión paga.
 
 ## Lo que este deploy no resuelve
 
-- **El frontend todavía no tiene pantalla de login.** La API pide token y la
-  pantalla no sabe pedirlo, así que desplegada va a mostrar el cartel de error en
-  todas las secciones. Es lo primero que falta.
 - **Los usuarios se crean por API**, con `POST /api/usuarios` desde una cuenta de
   administrador. No hay pantalla para eso.
 - **El plan gratuito de Railway duerme o corta el servicio** según el uso. La

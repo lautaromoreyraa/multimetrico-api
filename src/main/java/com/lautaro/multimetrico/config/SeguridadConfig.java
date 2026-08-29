@@ -21,16 +21,21 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Quién llega a cada endpoint.
  *
- * <h2>Esto es sólo la mitad del control</h2>
+ * <h2>Leer es público, escribir necesita entrar</h2>
  *
- * <p>Acá se decide <b>a qué endpoint</b> se llega, que es lo que un rol puede
- * contestar. Lo que un rol <b>no</b> puede contestar es de quién es la fila que
- * se está pidiendo: dos supervisores tienen el mismo rol y equipos distintos.
+ * <p>La línea está en el verbo, no en el recurso: <b>todos los GET son
+ * públicos</b> y todo lo que modifica datos pide una cuenta de administrador.
  *
- * <p>Esa segunda mitad vive en {@code ControlDeAcceso} y es la que importa. El
- * requisito del proyecto está escrito así: <i>un asesor que pide la fila de otro
- * recibe 403, nunca la fila</i>. Una regla por endpoint no puede cumplirlo —el
- * endpoint es el mismo— y por eso el control es por fila.
+ * <p>Es una decisión de producto y conviene decir qué se resigna. El PLAN §5.6
+ * pedía control <i>por fila</i> —que un asesor viera sólo la suya— y eso ya no
+ * está: con la lectura abierta, cualquiera que tenga la URL ve la tabla entera.
+ * A cambio, la pantalla se puede mostrar sin pedirle nada a nadie, que es lo que
+ * hace falta hoy.
+ *
+ * <p>Lo que sostiene esa decisión es que <b>los datos son sintéticos</b>. El día
+ * que entren números de una operación real, esto tiene que volver a cerrarse:
+ * la infraestructura de roles sigue acá y {@code Rol} ya distingue ASESOR de
+ * SUPERVISOR, así que es volver a poner el control, no rehacerlo.
  *
  * <h2>Sin sesión y sin CSRF</h2>
  *
@@ -50,11 +55,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SeguridadConfig {
 
     /**
-     * Las rutas que se pueden pedir sin token.
+     * Lo que se puede pedir sin token, además de todos los GET.
      *
      * <p>Sólo el login. No hay registro público: los usuarios los crea un
-     * administrador, porque quién entra a ver cuánto cobra la gente no es algo
-     * que se resuelva con un formulario abierto.
+     * administrador, porque quién carga el pliego del mes no es algo que se
+     * resuelva con un formulario abierto.
      */
     private static final String[] PUBLICAS = {
         "/api/auth/login",
@@ -85,31 +90,37 @@ public class SeguridadConfig {
                 .authorizeHttpRequests(rutas -> rutas
                         .requestMatchers(PUBLICAS).permitAll()
 
-                        // Cargar los datos del mes es de administrador. El pliego
-                        // define cuánto cobra cada uno y el padrón dice quién es
-                        // quién: no son cosas que se suban desde cualquier cuenta.
+                        // El orden importa y es la parte fácil de romper: Spring
+                        // evalúa de arriba abajo y se queda con la primera regla
+                        // que coincide. Los usuarios van ANTES del permitAll de
+                        // los GET, porque si no el GET los alcanza primero y los
+                        // deja abiertos. Hay un test que lo afirma.
                         //
-                        // Que la importación también lo sea es discutible —el
-                        // archivo semanal lo sube quien lo recibe, que podría ser
-                        // un supervisor— y está anotado como decisión a revisar.
-                        .requestMatchers(HttpMethod.POST, "/api/pliegos/**").hasRole(Rol.ADMIN.name())
-                        .requestMatchers(HttpMethod.POST, "/api/padrones/**").hasRole(Rol.ADMIN.name())
-                        .requestMatchers(HttpMethod.POST, "/api/mediciones/**").hasRole(Rol.ADMIN.name())
-                        .requestMatchers(HttpMethod.POST, "/api/perfiles/**").hasRole(Rol.ADMIN.name())
-                        .requestMatchers(HttpMethod.POST, "/api/importaciones/**").hasRole(Rol.ADMIN.name())
+                        // Son la excepción a "leer es público": listarlos es leer,
+                        // pero es leer quién tiene acceso.
                         .requestMatchers("/api/usuarios/**").hasRole(Rol.ADMIN.name())
 
-                        // El resto es lectura y necesita token. De quién es cada
-                        // fila lo decide ControlDeAcceso, adentro del servicio.
-                        .anyRequest().authenticated())
+                        // Leer es público: la tabla del equipo, la fila de una
+                        // persona, el pliego del mes y los informes de las
+                        // importaciones se muestran sin pedir nada.
+                        .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+
+                        // Todo lo que escribe es de administrador. El pliego
+                        // define cuánto cobra cada uno y el padrón dice quién es
+                        // quién: no son cosas que se suban desde cualquier lado.
+                        //
+                        // La regla va por verbo y no por ruta a propósito: así el
+                        // endpoint de escritura que se agregue mañana queda
+                        // protegido sin que nadie se acuerde de agregarlo acá.
+                        .anyRequest().hasRole(Rol.ADMIN.name()))
 
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> responder(res, HttpStatus.UNAUTHORIZED,
-                                "Hace falta iniciar sesión para ver esto.",
-                                "Mandá el token en la cabecera: Authorization: Bearer <token>."))
+                                "Hace falta iniciar sesión para hacer esto.",
+                                "Entrá al panel de administración. Leer no pide sesión; cargar datos, sí."))
                         .accessDeniedHandler((req, res, ex) -> responder(res, HttpStatus.FORBIDDEN,
-                                "No tenés permiso para ver esto.",
-                                "Tu usuario está autenticado, pero este recurso es de otra persona o de otro equipo.")))
+                                "Tu usuario no puede hacer esto.",
+                                "Cargar datos es de administrador.")))
 
                 .addFilterBefore(filtro, UsernamePasswordAuthenticationFilter.class);
 

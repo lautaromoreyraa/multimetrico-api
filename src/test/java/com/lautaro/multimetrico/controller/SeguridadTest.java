@@ -7,7 +7,6 @@ import static com.lautaro.multimetrico.fixture.EscenarioDeEjemplo.pliego;
 import static com.lautaro.multimetrico.fixture.Identidades.admin;
 import static com.lautaro.multimetrico.fixture.Identidades.asesor;
 import static com.lautaro.multimetrico.fixture.Identidades.como;
-import static com.lautaro.multimetrico.fixture.Identidades.supervisor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,13 +33,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * Quién ve qué.
+ * Qué se puede hacer sin entrar y qué no.
  *
- * <p>El requisito del proyecto está escrito así: <b>un asesor que pide la fila de
- * otro recibe 403, nunca la fila</b>. "Nunca la fila" es lo que hace que estos
- * tests miren el <em>cuerpo</em> de la respuesta y no sólo el código: un 403 con
- * los datos adentro sería exactamente el error que se quiere evitar, y pasaría un
- * test que sólo comparara el status.
+ * <p>La regla está en el verbo, no en el recurso: <b>leer es público, escribir es
+ * de administrador</b>. Estos tests existen para que esa línea no se corra sola
+ * —un endpoint de escritura nuevo que quede abierto, o un GET que empiece a pedir
+ * token y rompa la pantalla— porque ninguna de las dos cosas se nota mirando.
  *
  * <p>Período propio para no cruzarse con las otras clases, que comparten la base
  * H2. 2050 está libre: 2029 parecía estarlo y no lo estaba —lo usa
@@ -52,10 +50,6 @@ class SeguridadTest {
 
     private static final YearMonth PERIODO = YearMonth.of(2050, 1);
 
-    /** El líder que trae el escenario de ejemplo. */
-    private static final String PERALTA = "PERALTA SILVIA";
-
-    /** Dos asesores del equipo de PERALTA, según el escenario. */
     private static final String FLAVIA = "u100";
     private static final String OTRO = "u200";
 
@@ -100,15 +94,53 @@ class SeguridadTest {
         cargado = true;
     }
 
-    private String url(String legajo) {
+    private String filaDe(String legajo) {
         return "/api/multimetrico/%s/asesores/%s".formatted(PERIODO, legajo);
     }
 
-    // ── sin token ────────────────────────────────────────────────────────────
+    // ── leer es público ──────────────────────────────────────────────────────
 
     @Test
-    void sinTokenNoSeVeNada() throws Exception {
-        mvc().perform(get(url(FLAVIA)).param("campania", CAMPANIA))
+    void laTablaDelEquipoSeVeSinEntrar() throws Exception {
+        mvc().perform(get("/api/multimetrico/" + PERIODO).param("campania", CAMPANIA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas").isArray());
+    }
+
+    @Test
+    void laFilaDeCualquieraSeVeSinEntrar() throws Exception {
+        mvc().perform(get(filaDe(OTRO)).param("campania", CAMPANIA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.legajo").value(OTRO));
+    }
+
+    @Test
+    void elPliegoSeVeSinEntrar() throws Exception {
+        mvc().perform(get("/api/pliegos"))
+                .andExpect(status().isOk());
+    }
+
+    /**
+     * Un token de asesor no <em>reduce</em> lo que se ve.
+     *
+     * <p>Suena obvio y no lo es: mientras existió el control por fila, entrar
+     * como asesor mostraba menos que no entrar. Que hoy den lo mismo es la
+     * consecuencia de haber abierto la lectura, y este test lo deja escrito.
+     */
+    @Test
+    void entrarNoCambiaLoQueSeLee() throws Exception {
+        mvc().perform(get(filaDe(OTRO)).param("campania", CAMPANIA).with(como(asesor(FLAVIA))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.legajo").value(OTRO));
+    }
+
+    // ── escribir pide administrador ──────────────────────────────────────────
+
+    @Test
+    void cargarUnPliegoSinEntrarDa401() throws Exception {
+        mvc().perform(post("/api/pliegos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"periodo\":\"2050-09\",\"campania\":\"X\",\"escalas\":[]}"))
                 .andExpect(status().isUnauthorized())
                 // El 401 sale con el mismo formato que el resto de la API, no con
                 // el cuerpo vacío que devuelve Spring Security por defecto.
@@ -117,121 +149,58 @@ class SeguridadTest {
     }
 
     @Test
-    void elLoginEsLoUnicoPublico() throws Exception {
-        mvc().perform(post("/api/auth/login")
+    void cargarMedicionesSinEntrarDa401() throws Exception {
+        mvc().perform(post("/api/mediciones")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"legajo\":\"nadie\",\"password\":\"x\"}"))
-                // 401 y no 403: llega al endpoint, lo que falla son las credenciales.
+                        .content("{\"periodo\":\"2050-09\",\"fechaDeCorte\":\"2050-09-01\",\"mediciones\":[]}"))
                 .andExpect(status().isUnauthorized());
     }
 
-    // ── el control por fila ──────────────────────────────────────────────────
-
+    /** Autenticado pero sin ser administrador: 403 y no 401. */
     @Test
-    void unAsesorVeSuPropiaFila() throws Exception {
-        mvc().perform(get(url(FLAVIA)).param("campania", CAMPANIA).with(como(asesor(FLAVIA))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.legajo").value(FLAVIA));
-    }
-
-    /** El requisito, textual: nunca la fila. */
-    @Test
-    void unAsesorQuePideLaFilaDeOtroRecibe403YNoLaFila() throws Exception {
-        String cuerpo = mvc()
-                .perform(get(url(OTRO)).param("campania", CAMPANIA).with(como(asesor(FLAVIA))))
-                .andExpect(status().isForbidden())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        // Lo importante no es el 403 sino que no haya viajado nada de la fila.
-        assertThat(cuerpo).doesNotContain("alcanceTotal");
-        assertThat(cuerpo).doesNotContain("metricas");
-        assertThat(cuerpo).contains("403");
-    }
-
-    @Test
-    void unAsesorNoVeLaTablaDelEquipo() throws Exception {
-        String cuerpo = mvc()
-                .perform(get("/api/multimetrico/" + PERIODO).param("campania", CAMPANIA)
-                        .with(como(asesor(FLAVIA))))
-                .andExpect(status().isForbidden())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertThat(cuerpo).doesNotContain("filas");
-    }
-
-    // ── supervisores ─────────────────────────────────────────────────────────
-
-    @Test
-    void unSupervisorVeSuEquipo() throws Exception {
-        mvc().perform(get("/api/multimetrico/" + PERIODO)
-                        .param("campania", CAMPANIA)
-                        .with(como(supervisor(PERALTA))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.lider").value(PERALTA));
-    }
-
-    /**
-     * Sin pedir equipo, un supervisor obtiene el suyo y no la operación entera.
-     *
-     * <p>Se acota en vez de rechazarse: el resultado es exactamente lo que ya
-     * tenía derecho a ver, y un 403 acá sería pedirle que repita el dato que el
-     * token ya trae.
-     */
-    @Test
-    void unSupervisorSinPedirEquipoObtieneElSuyo() throws Exception {
-        mvc().perform(get("/api/multimetrico/" + PERIODO)
-                        .param("campania", CAMPANIA)
-                        .with(como(supervisor(PERALTA))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.lider").value(PERALTA));
-    }
-
-    @Test
-    void unSupervisorNoVeElEquipoDeOtro() throws Exception {
-        mvc().perform(get("/api/multimetrico/" + PERIODO)
-                        .param("campania", CAMPANIA)
-                        .param("lider", "CABRERA MONICA")
-                        .with(como(supervisor(PERALTA))))
-                .andExpect(status().isForbidden());
-    }
-
-    // ── cargar datos es de admin ─────────────────────────────────────────────
-
-    @Test
-    void unSupervisorNoCargaPliegos() throws Exception {
+    void unAsesorNoCargaPliegos() throws Exception {
         mvc().perform(post("/api/pliegos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"periodo\":\"2050-09\",\"campania\":\"X\",\"escalas\":[]}")
-                        .with(como(supervisor(PERALTA))))
+                        .with(como(asesor(FLAVIA))))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    void unAdminVeCualquierFila() throws Exception {
-        mvc().perform(get(url(OTRO)).param("campania", CAMPANIA).with(como(admin())))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.legajo").value(OTRO));
+    void listarUsuariosNoEsPublicoAunqueSeaUnGet() throws Exception {
+        // La excepción a "todo GET es público": leer quién tiene acceso es
+        // distinto de leer el multimétrico.
+        mvc().perform(get("/api/usuarios"))
+                .andExpect(status().isUnauthorized());
+
+        mvc().perform(get("/api/usuarios").with(como(admin())))
+                .andExpect(status().isOk());
     }
 
     // ── el login ─────────────────────────────────────────────────────────────
 
     @Test
     void elLoginDevuelveUnTokenQueSePuedeLeer() {
-        usuarios.crear(new UsuarioRequest("k900", "Prueba Login", "unacontrasenalarga", Rol.ASESOR, null));
+        usuarios.crear(new UsuarioRequest("k900", "Prueba Login", "unacontrasenalarga", Rol.ADMIN, null));
 
         var respuesta = usuarios.entrar(new LoginRequest("k900", "unacontrasenalarga"));
 
         assertThat(respuesta.legajo()).isEqualTo("k900");
-        assertThat(respuesta.rol()).isEqualTo(Rol.ASESOR);
+        assertThat(respuesta.rol()).isEqualTo(Rol.ADMIN);
 
         assertThat(tokens.leer(respuesta.token())).hasValueSatisfying(credencial -> {
             assertThat(credencial.legajo()).isEqualTo("k900");
-            assertThat(credencial.rol()).isEqualTo(Rol.ASESOR);
+            assertThat(credencial.rol()).isEqualTo(Rol.ADMIN);
         });
+    }
+
+    @Test
+    void unLoginQueNoCoincideDa401() throws Exception {
+        mvc().perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"legajo\":\"nadie\",\"password\":\"x\"}"))
+                // 401 y no 403: llega al endpoint, lo que falla son las credenciales.
+                .andExpect(status().isUnauthorized());
     }
 
     /**
@@ -243,7 +212,7 @@ class SeguridadTest {
      */
     @Test
     void elLoginNoDiceSiFalloElLegajoOLaContrasena() {
-        usuarios.crear(new UsuarioRequest("k901", "Prueba Mensaje", "unacontrasenalarga", Rol.ASESOR, null));
+        usuarios.crear(new UsuarioRequest("k901", "Prueba Mensaje", "unacontrasenalarga", Rol.ADMIN, null));
 
         String porLegajo = mensajeDeFallo(new LoginRequest("no-existe-nadie-asi", "loquesea"));
         String porPassword = mensajeDeFallo(new LoginRequest("k901", "la-equivocada"));

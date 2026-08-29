@@ -205,12 +205,22 @@ mapeo es configuración en tiempo de ejecución, no código.
 
 Librería: Apache POI para `.xlsx`.
 
-### 5.6 `seguridad` — POR HACER
+### 5.6 `seguridad` — HECHO (con alcance recortado)
 
-- `ASESOR`: ve **solo su fila**. Acceso por fila, no por endpoint.
-- `SUPERVISOR`: ve su equipo, carga pliegos, padrones e importaciones.
-- JWT, contraseñas con BCrypt.
-- Un asesor que pide la fila de otro recibe `403`, nunca la fila.
+Lo que se hizo: JWT con contraseñas en BCrypt, y **leer público / escribir con
+cuenta de `ADMIN`**. El panel de administración del frontend agrupa las tres
+pantallas que cargan datos.
+
+Lo que se recortó, y por qué está escrito acá en vez de borrado: el alcance
+original era **acceso por fila** —un `ASESOR` ve sólo la suya, un `SUPERVISOR` su
+equipo, y quien pide la fila de otro recibe 403 y nunca la fila—. Llegó a estar
+implementado y con tests. Se sacó al abrir la lectura, que es lo que permite
+mostrar la pantalla sin pedirle nada a nadie.
+
+Sostiene el recorte que **los datos son sintéticos**. Con datos reales hay que
+reponerlo, y no es rehacerlo: `Rol` sigue distinguiendo los tres, `Usuario` sigue
+guardando el equipo, y el control era una llamada desde `MultimetricoServiceImpl`
+antes de leer nada. Ver el javadoc de `ControlDeAcceso`.
 
 ### 5.7 `persistencia` — HECHO
 
@@ -256,7 +266,9 @@ valor está en el backend; la pantalla tiene que dejarlo ver.
 2. ~~`importacion`~~ — deja de depender de cargar a mano
 3. ~~`persistencia`~~ — sobrevive a un reinicio
 4. ~~Frontend~~ — se puede mostrar
-5. **`seguridad` — cada uno ve lo suyo.** Lo único que queda.
+5. ~~`seguridad`~~ — con alcance recortado, ver 5.6.
+
+No queda nada del alcance original sin hacer.
 
 El frontend se adelantó al orden original y fue lo correcto: mostrar la tabla es
 lo que hizo aparecer los problemas de criterio que ningún test iba a encontrar.
