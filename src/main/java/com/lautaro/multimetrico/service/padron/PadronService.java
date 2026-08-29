@@ -27,6 +27,12 @@ public interface PadronService {
 
     List<String> lideres(YearMonth periodo);
 
+    /** Suma una persona a la nómina del mes. */
+    Asesor agregarAsesor(YearMonth periodo, Asesor nuevo);
+
+    /** Corrige el nombre o el equipo de alguien. El legajo no se toca. */
+    Asesor corregirAsesor(YearMonth periodo, String legajo, String nombre, String lider);
+
     /**
      * Saca a una persona de la nómina del mes.
      *

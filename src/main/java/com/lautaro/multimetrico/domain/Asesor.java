@@ -69,6 +69,30 @@ public class Asesor {
         this.lider = lider;
     }
 
+    /**
+     * Corrige el nombre o el equipo.
+     *
+     * <p><b>El legajo no se toca</b>, y es la parte importante. Es la identidad
+     * con la que se guardaron las mediciones y los incentivos: cambiarlo dejaría
+     * todos esos hechos apuntando a alguien que ya no existe, y la persona
+     * aparecería en la tabla sin ninguno de sus números. Si un legajo está mal,
+     * lo correcto es dar de baja y volver a dar de alta.
+     *
+     * <p>El nombre sí se corrige seguido —llega escrito por otro sistema y a
+     * veces truncado— y el equipo cambia cuando alguien se muda de célula, que es
+     * el caso que más se usa.
+     */
+    public void corregir(String nombre, String lider) {
+        if (nombre == null || nombre.isBlank()) {
+            throw new IllegalArgumentException("El asesor %s necesita un nombre".formatted(legajo));
+        }
+        if (lider == null || lider.isBlank()) {
+            throw new IllegalArgumentException("El asesor %s necesita un líder".formatted(legajo));
+        }
+        this.nombre = nombre.trim();
+        this.lider = lider.trim();
+    }
+
     void colgarDe(Padron padron, int orden) {
         this.padron = padron;
         this.orden = orden;

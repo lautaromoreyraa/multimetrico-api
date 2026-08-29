@@ -105,6 +105,41 @@ public class Padron {
     }
 
     /**
+     * Suma una persona a la nómina del mes.
+     *
+     * <p>Rechaza el legajo repetido con el mismo mensaje que el constructor —y
+     * nombrando a las dos personas—, porque es el mismo error: dos filas con el
+     * mismo legajo hacen que las mediciones de una se le atribuyan a la otra.
+     *
+     * <p>El {@code orden} se asigna al final. Es sólo el orden en que vino el
+     * archivo original; las pantallas ordenan por nombre.
+     */
+    public Asesor agregar(Asesor nuevo) {
+        porLegajo(nuevo.legajo()).ifPresent(previo -> {
+            throw new IllegalArgumentException(
+                    "El legajo %s ya está en el padrón de %s: %s"
+                            .formatted(nuevo.legajo(), periodo, previo.nombre()));
+        });
+
+        nuevo.colgarDe(this, asesores.size());
+        asesores.add(nuevo);
+        return nuevo;
+    }
+
+    /**
+     * Corrige el nombre o el equipo de alguien que ya está.
+     *
+     * @throws java.util.NoSuchElementException si ese legajo no está en el padrón
+     */
+    public Asesor corregir(String legajo, String nombre, String lider) {
+        Asesor asesor = porLegajo(legajo).orElseThrow(() -> new java.util.NoSuchElementException(
+                "El legajo %s no está en el padrón de %s".formatted(legajo, periodo)));
+
+        asesor.corregir(nombre, lider);
+        return asesor;
+    }
+
+    /**
      * Saca a una persona de la nómina del mes.
      *
      * <p>Es una baja de verdad y no una marca: {@code orphanRemoval} borra la

@@ -32,7 +32,7 @@ intuición sigue tirando para el otro lado.
 | `incentivos` | ✅ | 7 | Importes importados de una planilla. **No se calculan** |
 | frontend | ✅ | **0** | `../multimetrico-frontend`. Cinco pantallas, sin mocks, revisadas en el navegador. Sin un solo test |
 
-**162 tests, en verde.**
+**168 tests, en verde.**
 
 ## Los dos repos
 
@@ -61,7 +61,7 @@ node scripts/datos-de-ejemplo.mjs  # los datos, sin esto la pantalla da 404
 cd ../multimetrico-frontend && npm run dev   # la pantalla, en el 5174
 ```
 
-`./mvnw test` corre los 162 y **no necesita la base levantada**: usan H2 en modo
+`./mvnw test` corre los 168 y **no necesita la base levantada**: usan H2 en modo
 de compatibilidad MySQL con las mismas migraciones de Flyway. La aplicación sí la
 necesita.
 
@@ -237,11 +237,17 @@ bolsa de pendientes como en la importación de métricas. Es más pobre a propó
 lo que no se resigna es que la fila desaparezca en silencio. Si el archivo de
 incentivos empieza a traer ambiguos seguido, ahí conviene el flujo completo.
 
-### La nómina se puede corregir de a una
+### La nómina tiene alta, baja y modificación
 
-Sacar a alguien del padrón del mes ya no obliga a recargar las cincuenta filas.
-Es una baja de verdad —`orphanRemoval` borra la fila— y está bien que lo sea: el
-padrón **es** reemplazable, a diferencia del pliego.
+Cambiar el padrón del mes ya no obliga a recargar las cincuenta filas. La baja es
+de verdad —`orphanRemoval` borra la fila— y está bien que lo sea: el padrón **es**
+reemplazable, a diferencia del pliego.
+
+> **El legajo no se puede cambiar.** Es la identidad con la que se guardaron las
+> mediciones y los incentivos de esa persona; moverlo dejaría todos esos hechos
+> apuntando a alguien que no existe. Por eso va en la URL y no en el cuerpo de la
+> corrección, y por eso arreglar un legajo mal es dar de baja y volver a dar de
+> alta.
 
 **Sus mediciones e importes quedan guardados.** No se borran en cascada porque son
 hechos históricos y el padrón no es su dueño; simplemente dejan de aparecer,
