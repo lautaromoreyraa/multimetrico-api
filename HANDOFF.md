@@ -164,7 +164,21 @@ ruido del auto-config por defecto y **no es un agujero** —la cadena no habilit
 form login ni basic auth, y la autorización la gobierna `SeguridadConfig`— pero
 un log así en producción se lee mal. Conviene desactivar esa auto-config.
 
-**5. La deuda de la lista de más abajo.**
+**5. `[frontend]` Quedó abierta una revisión visual con el usuario.** Se
+repasaron las cinco pantallas por captura y salieron cuatro arreglos, ya
+aplicados y en `master` del frontend. Faltan **dos textos que el usuario todavía
+no decidió si van**:
+
+- En **Pliego**, el párrafo sobre intervalos semiabiertos arriba de las tarjetas.
+  Los corchetes `[645, 670)` ya lo dicen para quien los necesita.
+- En **Administración**, el párrafo que aclara que mirar no pide cuenta. Quien
+  llegó a esa pantalla ya está viendo el formulario de login.
+
+No sacarlos por cuenta propia. El criterio del usuario es podar todo texto que no
+haga falta —así se fueron los rótulos y el pie del rail— pero estos dos los dejó
+pendientes de decisión, y la revisión sigue abierta: va a traer más cambios.
+
+**6. La deuda de la lista de más abajo.**
 
 ---
 
