@@ -13,3 +13,7 @@ target/
 
 # El local lleva el secreto de firma: no entra al repositorio.
 src/main/resources/application-local.properties
+
+# Variables de una maquina: nunca al repositorio.
+.env
+.env.*

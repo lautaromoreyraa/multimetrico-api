@@ -61,9 +61,14 @@ public class SeguridadConfig {
      * <p>Sólo el login. No hay registro público: los usuarios los crea un
      * administrador, porque quién carga el pliego del mes no es algo que se
      * resuelva con un formulario abierto.
+     *
+     * <p>La sonda de salud también: la consulta la plataforma, no una persona,
+     * y con show-details=never sólo contesta UP o DOWN.
      */
     private static final String[] PUBLICAS = {
         "/api/auth/login",
+        "/actuator/health",
+        "/actuator/health/**",
     };
 
     private final FiltroDeAutenticacionJwt filtro;
