@@ -1,179 +1,136 @@
-# multimetrico-api
+# Multimétrico API
 
-Centraliza las métricas semanales de un equipo de atención al cliente y arma el
-**multimétrico**: la fila donde cada asesor ve cómo viene en cada indicador.
+Backend for the **multimétrico**: the dashboard where every agent of a customer-service operation sees how they're doing on each performance metric — average handling time, NPS, first-contact resolution, sales activity, cancellations — and how much each one pays them.
 
-## El problema
+**Live demo:** [multimetrico.lautaromoreyra.dev](https://multimetrico.lautaromoreyra.dev) · Frontend: [multimetrico-frontend](https://github.com/lautaromoreyraa/multimetrico-frontend)
 
-En una operación de atención, el desempeño de cada asesor se mide con varias
-métricas —tiempo medio de operación, NPS, resolución en el primer contacto,
-actividad comercial, bajas— y cada una se convierte en un *alcance* pasándola por
-una tabla de tramos. El documento que define esos tramos es el **pliego**, y
-cambia todos los meses.
+![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-9-4479A1?logo=mysql&logoColor=white)
+![Apache POI](https://img.shields.io/badge/Excel_import-Apache_POI-D22128)
+![Tests](https://img.shields.io/badge/tests-168_passing-brightgreen)
 
-Hoy eso vive en una planilla de cálculo de cincuenta hojas. Tiene tres problemas
-que no son de prolijidad:
+## The problem
 
-**El pliego se pisa.** Hay una sola hoja de pliego: la del mes vigente. Los
-anteriores se sobrescribieron, así que el cálculo de un mes viejo no se puede
-reproducir — aplicarle los tramos de hoy a los datos de marzo da otro número.
+Each metric is turned into a payout by running it through a table of ranges. The document that defines those ranges — the **pliego** — changes every month, and in practice it lives in a 50-sheet spreadsheet with three real problems:
 
-**Los tramos se escriben mal y nadie se entera.** Se anotan con los dos extremos
-incluidos y con el número ya redondeado para mostrar: `0–642`, después `643–655`;
-`79,5%–80,0%`, después `80,1%–81,1%`. Eso deja huecos —un valor de 80,04% no cae
-en ningún tramo— y permite superposiciones —un tramo que termina en 681 junto a
-otro que arranca en 680—. La planilla no rechaza ninguna de las dos: resuelve por
-la primera coincidencia, en silencio.
+- **Last month's rules are overwritten.** There's only one sheet for the current month, so a past month can't be recalculated: applying today's ranges to March's data gives a different number.
+- **Ranges are written wrong and nobody notices.** They're typed with both ends inclusive and already rounded (`79.5%–80.0%`, then `80.1%–81.1%`), which leaves gaps — 80.04% falls in no range — and allows overlaps. The spreadsheet silently takes the first match.
+- **Nobody can tell why a number changed.** With targets moving every month, an agent can have the same NPS in July and August and be paid differently. The spreadsheet shows the result, not the rule that produced it.
 
-**No se puede saber por qué cambió un número.** Si los objetivos se mueven todos
-los meses, un asesor puede tener el mismo NPS en julio y en agosto y cobrar
-distinto. La planilla muestra el resultado, no la regla que lo produjo.
+## How it solves it
 
-## Cómo lo resuelve
+- **The pliego is a versioned entity tied to its period.** Recalculating March always uses March's rules, which makes it possible to separate how much the agent moved from how much the bar moved.
+- **Ranges are half-open intervals `[from, to)`.** Each range ends where the next one begins, so gaps and overlaps are impossible by construction; open ends (`null`) keep a perfect 100% inside the scale. Values are `BigDecimal` compared with `compareTo` and stored as `DECIMAL(18,6)`, because values land exactly on the edges — which is where floating point fails.
+- **A pliego is validated on upload and rejected as a whole**, with the *complete* list of problems (overlaps, gaps, scales that don't cover the extremes, weights that don't match the top range, duplicated metrics), so it can be fixed in one pass.
+- **Every result travels with its range.** Not *"your NPS paid 2.0%"* but *"your NPS of 55.4% fell in `[53.2%, 57.3%)`, which pays 2.0%"* — a number that can be argued with.
 
-**El pliego es una entidad versionada.** Está atado a su período y no se pisa.
-Recalcular marzo usa el pliego de marzo, siempre. De ahí sale la lectura que la
-planilla no puede dar: separar cuánto se movió el asesor de cuánto se movió la
-vara.
+```
+POST /api/pliegos   (a pliego with two overlapping ranges)
 
-**Los tramos son intervalos semiabiertos `[desde, hasta)`.** El `hasta` de uno es
-el `desde` del siguiente, así que los huecos y las superposiciones dejan de ser
-posibles por construcción. Los extremos van abiertos (`null`), de modo que un FCR
-perfecto de 100% no se caiga de la escala.
+422  ranges [-∞, 681) and [680, +∞) overlap between 680 and 681:
+     a value there falls in both
+```
 
-**El pliego se valida al cargarlo y se rechaza entero.** Devuelve la lista
-completa de problemas —no el primero— para poder corregirlo de una pasada:
-superposiciones, huecos, escalas que no cubren los extremos, pesos que no
-coinciden con el mejor tramo, métricas duplicadas.
+## Matching names to people
 
-**Cada resultado viaja con su tramo.** No "tu NPS te dio 2,0%", sino "tu NPS de
-55,4% cayó en `[53,2%, 57,3%)`, que paga 2,0%". Un número que se puede discutir.
+The metric files **carry no employee ID**: they carry a name written by another system, truncated to a fixed length and sometimes with broken encoding. When a name doesn't match, the person silently disappears from the dashboard.
 
-## Correr
+The **roster** (*padrón*) gives identity to those rows — and knows each agent's team lead, so filtering by team is done by the system instead of by someone opening every file each week. A name is resolved through four strategies, safest first: employee ID, exact normalized name, an alias already confirmed by a person, and a unique prefix.
+
+**It never guesses.** A similarity measure exists, but only to *suggest* candidates: in a calculation that ends in how much someone gets paid, resolving by similarity means attributing one person's metrics to another without leaving a trace. Ties stay pending with every candidate listed, and once a person confirms a match the system **learns the alias** and never asks again. The invariant: `resolved + pending` always equals the rows that came in — nothing is dropped silently.
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Language / framework | Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation, Actuator) |
+| Database | MySQL 9, schema owned by Flyway |
+| File import | Apache POI with configurable import profiles, processed asynchronously on a bounded queue |
+| Auth | JWT — reading is public, every write requires an account |
+| Tests | JUnit 5, Spring Boot Test, H2 in MySQL mode running the same Flyway migrations |
+| Runtime | Multi-stage Docker image, non-root user, layered jar |
+| Hosting | Railway behind Cloudflare |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    FE[React frontend] -->|HTTPS| CF[Cloudflare]
+    CF --> SEC[Security<br/>JWT on writes]
+    SEC --> C[Controllers]
+    C --> P[Pliego<br/>validation · evaluation]
+    C --> I[Import<br/>profiles · POI reader]
+    I -->|bounded async queue| PR[Processing]
+    PR --> RES[Name resolution<br/>against the roster]
+    C --> MM[Multimétrico<br/>team and agent views]
+    P --> R[Repositories]
+    PR --> R
+    RES --> R
+    MM --> R
+    R --> DB[(MySQL 9)]
+```
+
+**Import flow:** an admin uploads the weekly file → its **import profile** says which sheet and which columns hold each value (columns are found by header text, not by Excel letter, so a moved column still works) → rows are read, resolved against the roster and stored as **new measurements, never updates**, so it's always possible to reconstruct why a number changed within a month → the import report lists what was resolved and what is pending, and if the file didn't match its profile, exactly what was expected and what was found.
+
+## Project structure
+
+```
+src/main/java/com/lautaro/multimetrico
+├── config/                 security, JWT, auditing, async import executor, typed properties
+├── controller/             HTTP only
+├── domain/                 JPA entities (Pliego, Escala, Banda, Medicion, Importacion, …)
+├── dto/<area>/             request and response records per area
+├── enumeration/            metrics, range conditions, import states, …
+├── exception/              custom exceptions and the global error handler
+├── mapper/ + mapper/impl/  hand-written entity ⇄ DTO translation
+├── repository/             Spring Data interfaces
+├── service/<area>/         pliego, validacion, importacion, planilla, procesamiento,
+│                           resolucion, padron, medicion, multimetrico, incentivo, seguridad
+└── util/                   stateless helpers (decimals, periods)
+src/main/resources/db/migration   Flyway migrations
+scripts/                          sample-data loader
+```
+
+Domain names are in Spanish because they are the business's own terms (*pliego*, *escala*, *banda*, *padrón*); technical suffixes stay in English. Mappers are written by hand because translating between entities and DTOs involves decisions — what gets exposed and what doesn't — that an annotation can't document.
+
+## API overview
+
+| Area | Endpoints |
+|---|---|
+| Auth | `POST /api/auth/login`, `GET /api/auth/yo` |
+| Pliego | `POST /api/pliegos/revision` (dry run), `GET POST /api/pliegos`, `GET /api/pliegos/{period}`, `POST /api/pliegos/{period}/evaluacion` |
+| Roster | `GET /api/padrones/{period}`, `GET …/lideres`, `POST PUT DELETE …/asesores`, `POST …/resolucion`, `POST …/alias` |
+| Import | `POST /api/importaciones`, `GET /api/importaciones/{id}`, `POST …/{id}/pendientes/{row}` |
+| Import profiles | `GET POST /api/perfiles`, `POST /api/perfiles/inspeccion` |
+| Measurements | `POST /api/mediciones`, `GET /api/mediciones/{period}` |
+| Dashboard | `GET /api/multimetrico/{period}`, `GET /api/multimetrico/{period}/asesores/{id}` |
+| Incentives | `GET POST /api/incentivos/{period}` |
+
+## Getting started
+
+**Prerequisites:** Java 21, Node 20+ (for the sample-data script) and Docker or Podman.
 
 ```bash
-docker compose up -d               # MySQL en el 3307
-./mvnw spring-boot:run             # la API en el 8082
-node scripts/datos-de-ejemplo.mjs  # un mes cargado, para poder mirar algo
-
-cd ../multimetrico-frontend && npm run dev   # la pantalla, en el 5174
+docker compose up -d               # MySQL on port 3307
+cp src/main/resources/application-local.properties.example \
+   src/main/resources/application-local.properties   # set the JWT secret
+./mvnw spring-boot:run             # API on port 8082
+node scripts/datos-de-ejemplo.mjs  # sample data from January to the current month
 ```
 
-`./mvnw test` corre los 134 tests y **no necesita la base levantada**: usan H2 en
-modo de compatibilidad MySQL con las mismas migraciones de Flyway. La aplicación
-sí la necesita.
+The sample data covers fifteen agents, two team leads, the five metrics, and a pliego and roster per month — with four weekly loads per metric and a few agents missing files, so every rule of the dashboard has something to show. Running it twice is harmless.
 
-El tercer comando es el que separa ver la pantalla de ver un 404: la primera
-pantalla es la tabla del equipo entero, y sin pliego, padrón y mediciones no hay
-nada que mostrar.
-
-Carga **de enero al mes en curso** —quince asesores, dos líderes, las cinco
-métricas, un pliego y un padrón por mes— en la campaña `CONVERGENTE`. Varios
-meses y no uno solo porque "Mis métricas" compara contra otro mes. No
-carga meses futuros: serían mediciones con una fecha de corte que todavía no
-ocurrió. Para otro rango, `node scripts/datos-de-ejemplo.mjs 2026-01 2026-12`.
-
-Tres cosas que hace a propósito y no son ruido:
-
-- **Cuatro cargas por métrica y por mes**, una por semana. Cada carga es una
-  medición nueva y no un `UPDATE`, que es lo que deja reconstruir por qué cambió
-  un número dentro del mes.
-- **Un solo corte vigente por métrica.** Cada archivo trae a todo el equipo con
-  la misma fecha, así que en un momento dado no puede haber dos fechas
-  conviviendo en una columna. El día sí cambia entre métricas, porque depende de
-  cuándo mande cada archivo la empresa.
-- En el último mes, **tres personas sin archivo** en alguna métrica —y salteadas
-  en las cuatro semanas, no sólo en la última—, que es lo que ejercita la regla
-  de que una métrica sin archivo bonifica cero.
-
-Correrlo dos veces es inofensivo.
-
-El contenedor puede existir apagado de una sesión anterior: si `compose up`
-protesta que el nombre está en uso, `docker start multimetrico-mysql` lo revive
-**con sus datos**. `docker compose down -v` lo borra de cero.
-
-## Endpoints
-
-| Método | Ruta | Para qué |
-|---|---|---|
-| `POST` | `/api/pliegos/revision` | Revisa un pliego sin guardarlo |
-| `POST` | `/api/pliegos` | Carga el pliego del mes (valida y rechaza si está roto) |
-| `GET` | `/api/pliegos` | Lista los pliegos cargados |
-| `GET` | `/api/pliegos/{aaaa-mm}?campania=` | Trae uno |
-| `POST` | `/api/pliegos/{aaaa-mm}/evaluacion?campania=` | Evalúa mediciones contra ese pliego |
-
-Un pliego con un tramo superpuesto:
+### Tests
 
 ```bash
-curl -X POST localhost:8082/api/pliegos -H 'Content-Type: application/json' -d '{
-  "periodo": "2026-09", "campania": "CONVERGENTES",
-  "escalas": [{ "metrica": "TMO", "peso": 3, "bandas": [
-    { "desde": null, "hasta": 681,  "resultado": 3 },
-    { "desde": 680,  "hasta": null, "resultado": 0 }
-  ]}]
-}'
+./mvnw test     # no database needed: H2 in MySQL mode with the same migrations
 ```
 
-```
-422  las bandas [-∞, 681) y [680, +∞) se pisan entre 680 y 681:
-     un valor ahí cae en las dos
-```
+## Deployment
 
-## El padrón
+The `Dockerfile` builds in two stages, splits the jar into Spring Boot layers and runs as an unprivileged user with an explicit JVM memory ceiling. Railway only promotes a deployment once `/actuator/health` reports `UP`; service settings live in `.railway/railway.ts`.
 
-Los archivos de métricas **no traen legajo**: traen el nombre escrito por otro
-sistema, cortado a un largo fijo y a veces con la codificación rota. Toda la
-cadena empalma por ese texto, así que cuando un nombre no coincide, la persona
-simplemente no aparece en el multimétrico — y se entera cuando reclama.
+## About the data
 
-El padrón le pone identidad a eso. Guarda la operación entera con el líder de
-cada asesor, de modo que **el filtrado por equipo lo hace el sistema**, no una
-persona abriendo cada archivo y filtrando por su propio nombre todas las semanas.
-
-Para resolver un nombre se prueban cuatro vías, de la más segura a la menos, y la
-primera que da resultado gana: legajo, nombre exacto normalizado, alias ya
-confirmado, y prefijo único.
-
-**Lo que no hace es adivinar.** Hay una medida de parecido, pero se usa solo para
-sugerirle candidatos a una persona. En un cálculo que termina en cuánto cobra
-alguien, resolver por similitud significa poder atribuirle a una persona las
-métricas de otra, y sin dejar rastro de que fue una suposición. Tampoco resuelve
-cuando hay empate: `SOSA ANA` es principio de `SOSA ANA MARIA` y de
-`SOSA ANABELA ROSA`, así que queda pendiente con los dos candidatos.
-
-Cuando una persona confirma un caso, **el sistema lo aprende**: el alias queda
-guardado contra el legajo y no vuelve a preguntar por ese texto nunca más.
-
-La propiedad que sostiene todo: `resueltos + pendientes` es siempre igual a la
-cantidad de filas que entraron. Nada se descarta en silencio.
-
-```
-POST /api/padrones/2026-08/resolucion
-{ "nombres": ["AGUIRRE FLAVIA Y", "u300", "SOSA ANA", "PEREZ QUIENSABE"] }
-```
-
-```json
-{ "total": 4, "resueltos": 2, "pendientes": 2, "completa": false,
-  "porEstrategia": { "PREFIJO_UNICO": 1, "LEGAJO": 1 },
-  "sinResolver": [
-    { "texto": "SOSA ANA", "motivo": "el nombre viene cortado y coincide con más de un asesor",
-      "candidatos": [ {"legajo":"u300","nombre":"SOSA ANA MARIA"},
-                      {"legajo":"u400","nombre":"SOSA ANABELA ROSA"} ] },
-    { "texto": "PEREZ QUIENSABE", "motivo": "no se parece a nadie del padrón", "candidatos": [] }
-  ]}
-```
-
-| Método | Ruta | Para qué |
-|---|---|---|
-| `POST` | `/api/padrones` | Carga el padrón del período |
-| `GET` | `/api/padrones/{aaaa-mm}?lider=` | La operación entera, o un equipo |
-| `GET` | `/api/padrones/{aaaa-mm}/lideres` | Los líderes del período |
-| `POST` | `/api/padrones/{aaaa-mm}/resolucion` | Cruza nombres contra el padrón, sin importar nada |
-| `POST` | `/api/padrones/{aaaa-mm}/alias` | Una persona confirma un texto; el sistema lo aprende |
-
-## Sobre los datos
-
-Este proyecto está modelado sobre un proceso real, pero **no contiene datos de
-ninguna operación**. Los umbrales que aparecen en los tests son inventados: los
-de una empresa son objetivos internos y no van en un repositorio. El sistema se
-construye y se prueba con datos sintéticos.
+The project is modeled on a real process but **contains no data from any operation**. The thresholds in the tests are invented — a company's targets are internal and don't belong in a repository — and the system is built and tested with synthetic data only.
