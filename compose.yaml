@@ -7,13 +7,15 @@
 # archivo solo pone la base en pie.
 services:
   mysql:
-    image: mysql:8.4
+    # La misma serie que la MySQL de Railway, donde corre producción.
+    image: mysql:9
     container_name: multimetrico-mysql
     # 3307 y no 3306: si la maquina ya tiene un MySQL instalado, el puerto de
     # siempre esta tomado y el contenedor no levanta. La url por defecto de
     # application.yml apunta a este puerto.
     ports:
-      - "3307:3306"
+      # Sólo desde esta máquina: Podman publica en todas las interfaces.
+      - "127.0.0.1:3307:3306"
     environment:
       MYSQL_DATABASE: multimetrico
       MYSQL_USER: multimetrico
@@ -30,8 +32,11 @@ services:
       - --default-time-zone=+00:00
     # La app arranca corriendo migraciones de Flyway: sin healthcheck se conecta
     # antes de que MySQL termine de inicializarse y falla el primer arranque.
+    # Por TCP (127.0.0.1): durante la inicialización MySQL levanta un servidor
+    # temporal sólo con socket, y un ping a "localhost" lo da por sano antes de
+    # tiempo.
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
       interval: 5s
       timeout: 5s
       retries: 20

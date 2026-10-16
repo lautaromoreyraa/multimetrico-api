@@ -1,3 +1,8 @@
+# El perfil local vive en src/main/resources con secretos de esta máquina:
+# `COPY src` lo metería dentro del jar de la imagen.
+**/application-local.properties
+**/application-local.y*ml
+
 # Lo que no tiene que entrar al contexto del build.
 #
 # target/ es el mas importante: son cientos de megas de clases compiladas en la
