@@ -17,3 +17,6 @@ src/main/resources/application-local.properties
 # Variables de una maquina: nunca al repositorio.
 .env
 .env.*
+
+# SDK de Railway para evaluar .railway/railway.ts
+node_modules/
