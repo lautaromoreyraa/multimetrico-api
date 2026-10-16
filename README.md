@@ -171,46 +171,6 @@ POST /api/padrones/2026-08/resolucion
 | `POST` | `/api/padrones/{aaaa-mm}/resolucion` | Cruza nombres contra el padrón, sin importar nada |
 | `POST` | `/api/padrones/{aaaa-mm}/alias` | Una persona confirma un texto; el sistema lo aprende |
 
-## Estado
-
-**El MVP anda de punta a punta.** Pliego, padrón, mediciones con su historia,
-multimétrico de equipo y de asesor, importación por perfil configurable y
-persistencia en MySQL con Flyway. 134 tests en verde, y las cinco pantallas del
-frontend verificadas en el navegador contra la API corriendo.
-
-La primera pantalla es el multimétrico del equipo: una fila por asesor y, por
-cada métrica, **dos columnas** —el valor medido y lo que ese valor paga—, con la
-fecha de corte de esa métrica en el encabezado y el promedio del equipo fijo al
-pie.
-
-Una métrica sin archivo **bonifica cero**: es lo que se cobra si el archivo no
-llegó. Lo que no se rellena es el valor medido, que se muestra vacío — escribir
-un 0 ahí diría que se midió cero, que es una afirmación sobre el desempeño de
-alguien que nadie hizo.
-
-Los tres estados de una bonificación se leen de un barrido, por color y también
-por el número: **suma** en verde, **cero** en ámbar y **resta** en rojo. El mismo
-código se aplica al aporte de cada métrica, al total de la fila, al promedio del
-equipo y a **lo que paga cada banda en la pantalla del pliego**, que es donde se
-decide todo lo demás: así una banda en cero se nota mientras se la escribe y no
-tres pantallas más tarde.
-
-El cero va en ámbar y no en gris porque no es la ausencia de un dato: es un
-resultado, y encima el que conviene ir a mirar. Y el color nunca viaja solo — el
-cero se escribe `0,0%` y el negativo lleva su signo—, así que los tres estados se
-distinguen sin depender de poder separar verde de ámbar de rojo.
-
-La segunda pantalla, **Mis métricas**, compara a una persona contra otro mes
-—el anterior por defecto, pero se elige cualquiera de los cargados— y muestra al
-pie cómo se movió cada métrica dentro del mes, carga por carga, con la vigente
-marcada.
-
-**Lo que falta es autenticación** (`PLAN.md` §5.6). Hoy cualquiera ve la fila de
-cualquiera, en la API y en la pantalla, y el selector de asesor de "Mi
-multimétrico" tendría que ser el legajo del token. El control tiene que ser **por
-fila y no por endpoint**: un asesor que pide la fila de otro recibe 403, nunca la
-fila.
-
 ## Sobre los datos
 
 Este proyecto está modelado sobre un proceso real, pero **no contiene datos de
