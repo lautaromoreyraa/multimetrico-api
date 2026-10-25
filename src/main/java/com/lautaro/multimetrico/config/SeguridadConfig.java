@@ -1,6 +1,6 @@
 package com.lautaro.multimetrico.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.lautaro.multimetrico.dto.error.ErrorResponse;
 import com.lautaro.multimetrico.enumeration.Rol;
 import jakarta.servlet.DispatcherType;
