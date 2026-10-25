@@ -1,6 +1,6 @@
 package com.lautaro.multimetrico.mapper.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import tools.jackson.core.type.TypeReference;
 import com.lautaro.multimetrico.domain.Importacion;
 import com.lautaro.multimetrico.domain.PerfilDeImportacion;
 import com.lautaro.multimetrico.dto.importacion.Desajuste;
