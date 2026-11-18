@@ -30,12 +30,6 @@ public class ImportacionController {
         this.mapper = mapper;
     }
 
-    /**
-     * Recibe el archivo y responde con el id.
-     *
-     * <p>Devuelve {@code 202 Accepted} y no {@code 201}: cuando la respuesta sale,
-     * la importación todavía se está procesando. El estado se consulta después.
-     */
     @PostMapping
     public ResponseEntity<ImportacionResponse> importar(
             @RequestParam("archivo") MultipartFile archivo,
@@ -57,13 +51,6 @@ public class ImportacionController {
         return servicio.historial().stream().map(mapper::aResponse).toList();
     }
 
-    /**
-     * Asigna a mano una fila que quedó pendiente.
-     *
-     * <p>Vale para esta fila de este archivo, y no crea un alias global: un nombre
-     * cortado que apunta a dos personas puede ser una este mes y la otra el
-     * siguiente.
-     */
     @PostMapping("/{id}/pendientes/{fila}")
     public ImportacionResponse resolver(
             @PathVariable String id,

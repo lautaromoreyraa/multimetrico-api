@@ -16,12 +16,6 @@ import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfig
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-/**
- * El pliego por HTTP.
- *
- * <p>Estas aserciones son el contrato que consume el frontend, así que valen el
- * doble después de la reestructuración: si una se movió, se movió la API.
- */
 @SpringBootTest
 class PliegoControllerTest {
 
@@ -32,9 +26,6 @@ class PliegoControllerTest {
 
     private MockMvc mvc() {
         if (mockMvc == null) {
-            // springSecurity() mete la cadena de seguridad real en el MockMvc. Sin
-            // esto los tests pasan por al lado de toda la autorizacion: un GET sin
-            // token devolveria 200 y nadie se enteraria de que la regla no anda.
             mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
                     .apply(SecurityMockMvcConfigurers.springSecurity())
                     .build();
@@ -57,7 +48,6 @@ class PliegoControllerTest {
             }
             """;
 
-    /** Una banda que se pisa con la siguiente no se guarda: 422 y el motivo. */
     private static final String PLIEGO_SUPERPUESTO = """
             {
               "periodo": "2026-09",
@@ -81,8 +71,6 @@ class PliegoControllerTest {
                 .andExpect(jsonPath("$.periodo").value("2026-08"))
                 .andExpect(jsonPath("$.alcanceMaximo").value(3.5))
                 .andExpect(jsonPath("$.escalas[0].bandas[0].rango").value("[-∞, 50)"))
-                // La unidad la sabe el enum Metrica y viaja en la escala, para que la
-                // pantalla no tenga que deducirla del nombre de la métrica.
                 .andExpect(jsonPath("$.escalas[0].unidad").value("PORCENTAJE"));
     }
 
@@ -95,7 +83,6 @@ class PliegoControllerTest {
                 .andExpect(jsonPath("$.detalles[0]", org.hamcrest.Matchers.containsString("se pisan")));
     }
 
-    /** La revisión no guarda: sirve para mirar el pliego del mes antes de comprometerlo. */
     @Test
     void laRevisionDevuelveLosProblemasSinGuardar() throws Exception {
         mvc().perform(post("/api/pliegos/revision").contentType(MediaType.APPLICATION_JSON)
@@ -140,18 +127,6 @@ class PliegoControllerTest {
                 .andExpect(jsonPath("$.completa").value(true));
     }
 
-    /**
-     * Volver a cargar el mismo pliego devuelve 409 y no lo pisa.
-     *
-     * <p>No estaba cubierto por HTTP y es la regla central del proyecto: si el
-     * pliego de un mes se puede sobrescribir, el cálculo de ese mes deja de ser
-     * reproducible.
-     *
-     * <p>Usa un período <b>propio</b> y no el de {@link #cargaUnPliegoValido}: la
-     * base se comparte entre métodos y JUnit no garantiza el orden, así que
-     * apoyarse en el pliego del otro test hacía que, según cuál corriera primero,
-     * el que esperaba un 201 recibiera este 409.
-     */
     @Test
     void unPliegoYaCargadoNoSePisa() throws Exception {
         String pliego = PLIEGO_SANO.replace("2026-08", "2026-11");

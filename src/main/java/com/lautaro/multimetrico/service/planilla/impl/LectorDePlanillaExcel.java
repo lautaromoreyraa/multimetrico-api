@@ -23,22 +23,9 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Service;
 
-/**
- * El lector de planillas de Excel, con POI.
- *
- * <p>Se llama {@code Excel} y no {@code Impl} a propósito: es <em>una</em> forma
- * de leer una fuente, no la única posible. El día que la empresa publique CSV, la
- * implementación nueva se va a llamar por su formato y las dos van a convivir sin
- * que ninguna tenga el nombre genérico.
- */
 @Service
 public class LectorDePlanillaExcel implements LectorDePlanilla {
 
-    /**
-     * Formatea la celda como se ve en pantalla. Importa para los rechazos: el que
-     * lee el informe quiere que le digan lo que dice su archivo, no la
-     * representación interna.
-     */
     private final DataFormatter formateador = new DataFormatter(Locale.of("es", "AR"));
 
     @Override
@@ -101,14 +88,6 @@ public class LectorDePlanillaExcel implements LectorDePlanilla {
         return hoja;
     }
 
-    /**
-     * Busca cada columna del perfil por su encabezado y junta <b>todos</b> los
-     * desajustes antes de rendirse.
-     *
-     * <p>Un encabezado repetido también es desajuste: si la hoja trae dos columnas
-     * llamadas igual, elegir la primera es adivinar, y adivinar acá significa
-     * importar los números de otra cosa.
-     */
     private Map<String, Integer> ubicarColumnas(Sheet hoja, PerfilDeImportacion perfil) {
         Row encabezados = hoja.getRow(perfil.filaEncabezadosEnPoi());
         if (encabezados == null) {
@@ -154,14 +133,6 @@ public class LectorDePlanillaExcel implements LectorDePlanilla {
         }
     }
 
-    /**
-     * Lee de la fila siguiente a los encabezados hasta el final.
-     *
-     * <p>Las filas totalmente vacías no se cuentan. Las planillas arrastran cientos
-     * de filas en blanco al final —solo por haber tenido formato alguna vez— y
-     * contarlas convertiría el informe en ruido: mil filas leídas y novecientas
-     * rechazadas por venir vacías.
-     */
     private List<FilaLeida> leerFilas(Sheet hoja, PerfilDeImportacion perfil, Map<String, Integer> columnas) {
         List<FilaLeida> filas = new ArrayList<>();
         Integer columnaLider = columnas.get("lider");
@@ -184,14 +155,6 @@ public class LectorDePlanillaExcel implements LectorDePlanilla {
         return List.copyOf(filas);
     }
 
-    /**
-     * El contenido de la celda, conservando si Excel la guardó como número y con
-     * formato de porcentaje.
-     *
-     * <p>Esa distinción no es cosmética: una celda con formato de porcentaje
-     * guarda 0,805 y muestra 80,5%. Sin saberlo, el mismo archivo se importa cien
-     * veces más chico.
-     */
     private ValorCrudo valor(Cell celda) {
         if (celda == null) {
             return ValorCrudo.ninguno();
@@ -220,11 +183,6 @@ public class LectorDePlanillaExcel implements LectorDePlanilla {
         return List.copyOf(nombres);
     }
 
-    /**
-     * Los encabezados se comparan sin distinguir mayúsculas ni espacios de más. Un
-     * perfil no se tiene que romper porque alguien escribió "TMO " con un espacio
-     * al final.
-     */
     private String normalizar(String encabezado) {
         return encabezado == null ? "" : encabezado.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
     }

@@ -15,7 +15,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** El padrón por período, y el aprendizaje de alias que lo acompaña. */
 @Service
 public class PadronServiceImpl implements PadronService {
 
@@ -29,13 +28,6 @@ public class PadronServiceImpl implements PadronService {
         this.resolutor = resolutor;
     }
 
-    /**
-     * Borra el padrón del período y escribe el nuevo entero.
-     *
-     * <p>El {@code flush} entre el borrado y el alta no es decorativo: sin él
-     * Hibernate puede mandar el {@code INSERT} antes que el {@code DELETE} y la
-     * unique del período lo rechaza.
-     */
     @Override
     @Transactional
     public Padron cargar(Padron padron) {
@@ -96,8 +88,6 @@ public class PadronServiceImpl implements PadronService {
         Padron padron = buscar(periodo);
         Asesor quitado = padron.quitar(legajo);
 
-        // El save es lo que dispara el orphanRemoval: sin él, la lista queda
-        // modificada en memoria y la fila sigue en la base.
         padrones.save(padron);
         return quitado;
     }
@@ -108,13 +98,6 @@ public class PadronServiceImpl implements PadronService {
         return resolutor.resolver(buscar(periodo), nombres);
     }
 
-    /**
-     * Confirmar un nombre que ya estaba lo reapunta, no lo duplica.
-     *
-     * <p>Si alguien se equivocó al confirmar, volver a confirmar corrige. Un
-     * insert a secas chocaría contra la unique del nombre y dejaría el error
-     * escrito para siempre.
-     */
     @Override
     @Transactional
     public Asesor confirmarAlias(YearMonth periodo, String texto, String legajo) {

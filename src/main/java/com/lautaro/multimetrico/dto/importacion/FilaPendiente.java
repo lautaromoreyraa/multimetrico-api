@@ -6,19 +6,6 @@ import com.lautaro.multimetrico.enumeration.MotivoDePendiente;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * Una fila que está bien salvo por una cosa: no se sabe de quién es.
- *
- * <p>Es distinta de un rechazo y por eso es un estado propio. En un rechazo no
- * hay nada que hacer con la fila; acá el número es válido y está esperando que
- * una persona diga a qué legajo corresponde el nombre. Por eso el
- * {@code valor} viaja <b>ya interpretado</b>: cuando alguien confirme el legajo,
- * la medición se crea sin volver a abrir el archivo, que a esa altura ya no
- * está.
- *
- * <p>Los {@code candidatos} son los que el resolutor sugiere. Nunca se elige uno
- * solo: si el sistema pudiera decidir, la fila no sería un pendiente.
- */
 public record FilaPendiente(
         int numeroDeFila,
         String textoAsesor,

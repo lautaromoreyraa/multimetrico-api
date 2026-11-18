@@ -18,24 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Quién estaba en la operación en un período, y bajo qué líder.
- *
- * <p>Va por período como el pliego, y por la misma razón: la gente entra y sale,
- * y el multimétrico de marzo tiene que poder rearmarse con la gente que había en
- * marzo. Si el padrón fuera uno solo y siempre el actual, un asesor que renunció
- * desaparecería de sus propios meses.
- *
- * <p><b>Pero a diferencia del pliego, el padrón sí se puede reemplazar.</b> No es
- * un descuido de consistencia: son cosas distintas. El pliego es el compromiso
- * del mes y pisarlo cambia resultados ya calculados; el padrón es una lista de
- * personas que cambia dentro del mismo mes cada vez que alguien ingresa. Volver
- * a cargarlo es la operación normal, no una corrección excepcional.
- *
- * <p>Guarda <b>todos</b> los equipos, no solo uno. Es la forma del archivo de
- * origen —la nómina viene con la operación entera y una columna de líder— y es lo
- * que permite que el sistema haga el filtrado que hoy hace cada supervisor a mano.
- */
 @Entity
 @Table(name = "padron")
 public class Padron {
@@ -47,15 +29,6 @@ public class Padron {
     @Column(name = "periodo", nullable = false, length = 7, unique = true)
     private YearMonth periodo;
 
-    /**
-     * Los asesores en el orden en que llegaron.
-     *
-     * <p>La columna {@code orden} existe para eso. Sin ella el orden lo decidiría
-     * el motor, y aunque las vistas que importan reordenan por su cuenta
-     * —{@link #equipoDe} ordena por nombre—, guardar una lista y leerla barajada
-     * es la clase de diferencia que aparece recién cuando alguien compara dos
-     * listados y no entiende por qué no coinciden.
-     */
     @OneToMany(mappedBy = "padron", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orden")
     private List<Asesor> asesores = new ArrayList<>();
@@ -104,16 +77,6 @@ public class Padron {
                 .findFirst();
     }
 
-    /**
-     * Suma una persona a la nómina del mes.
-     *
-     * <p>Rechaza el legajo repetido con el mismo mensaje que el constructor —y
-     * nombrando a las dos personas—, porque es el mismo error: dos filas con el
-     * mismo legajo hacen que las mediciones de una se le atribuyan a la otra.
-     *
-     * <p>El {@code orden} se asigna al final. Es sólo el orden en que vino el
-     * archivo original; las pantallas ordenan por nombre.
-     */
     public Asesor agregar(Asesor nuevo) {
         porLegajo(nuevo.legajo()).ifPresent(previo -> {
             throw new IllegalArgumentException(
@@ -126,11 +89,6 @@ public class Padron {
         return nuevo;
     }
 
-    /**
-     * Corrige el nombre o el equipo de alguien que ya está.
-     *
-     * @throws java.util.NoSuchElementException si ese legajo no está en el padrón
-     */
     public Asesor corregir(String legajo, String nombre, String lider) {
         Asesor asesor = porLegajo(legajo).orElseThrow(() -> new java.util.NoSuchElementException(
                 "El legajo %s no está en el padrón de %s".formatted(legajo, periodo)));
@@ -139,24 +97,6 @@ public class Padron {
         return asesor;
     }
 
-    /**
-     * Saca a una persona de la nómina del mes.
-     *
-     * <p>Es una baja de verdad y no una marca: {@code orphanRemoval} borra la
-     * fila. Está bien que así sea porque el padrón <b>es</b> reemplazable —a
-     * diferencia del pliego, que no se pisa nunca—: es una lista que cambia
-     * dentro del mes, y volver a cargarla ya la reescribía entera. Esto sólo
-     * evita tener que rehacer las cincuenta filas para corregir una.
-     *
-     * <p><b>Lo que queda:</b> las mediciones y los incentivos de esa persona
-     * siguen guardados. No se borran en cascada a propósito — son hechos
-     * históricos y el padrón no es su dueño—, simplemente dejan de aparecer,
-     * porque el multimétrico se arma recorriendo el padrón. Si la persona vuelve
-     * a cargarse, sus números vuelven con ella.
-     *
-     * @return el asesor que se sacó
-     * @throws java.util.NoSuchElementException si ese legajo no está en el padrón
-     */
     public Asesor quitar(String legajo) {
         Asesor asesor = porLegajo(legajo).orElseThrow(() -> new java.util.NoSuchElementException(
                 "El legajo %s no está en el padrón de %s".formatted(legajo, periodo)));
@@ -165,12 +105,6 @@ public class Padron {
         return asesor;
     }
 
-    /**
-     * El equipo de un líder.
-     *
-     * <p>Esto es el paso que hoy se hace a mano: abrir el archivo con todos los
-     * equipos y filtrar por el propio nombre, en cada métrica, todas las semanas.
-     */
     public List<Asesor> equipoDe(String lider) {
         NombreNormalizado buscado = NombreNormalizado.de(lider);
         return asesores.stream()

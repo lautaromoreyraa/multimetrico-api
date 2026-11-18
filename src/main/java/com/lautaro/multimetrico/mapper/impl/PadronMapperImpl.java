@@ -11,14 +11,6 @@ import com.lautaro.multimetrico.util.PeriodoUtil;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/**
- * El mapper del padrón, escrito a mano.
- *
- * <p>A mano y no generado: son cuatro campos y la traducción tiene decisiones
- * adentro —qué se expone y qué no— que una anotación no puede documentar. El
- * {@code id} de la fila, por ejemplo, no sale nunca: la identidad de una persona
- * en este sistema es el legajo.
- */
 @Component
 public class PadronMapperImpl implements PadronMapper {
 

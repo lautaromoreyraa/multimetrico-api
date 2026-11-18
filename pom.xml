@@ -18,8 +18,6 @@
 
     <properties>
         <java.version>21</java.version>
-        <!-- 4.1.2 gestiona Jackson 3.1.7 y 2.21.7; se fijan las ultimas de cada linea
-             (3 para Spring, 2 para las librerias que todavia lo usan, como jjwt). -->
         <jackson-bom.version>3.1.8</jackson-bom.version>
         <jackson-2-bom.version>2.21.8</jackson-2-bom.version>
         <jjwt.version>0.12.6</jjwt.version>
@@ -31,7 +29,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
-        <!-- Sonda de salud para el PaaS y el healthcheck del contenedor -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -49,13 +46,6 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!--
-            JJWT, partido en tres artefactos como pide la libreria: la API en
-            compile y la implementacion y el serializador en runtime. Que impl no
-            sea visible al compilar es a proposito de los autores: el codigo de
-            la aplicacion habla contra la interfaz y no puede atarse a detalles
-            de una version.
-        -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -74,13 +64,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!--
-            Flyway es el dueno del esquema y Hibernate no genera DDL nunca
-            (ddl-auto: none). Un esquema que Hibernate recrea solo se lleva puesta
-            la historia de mediciones, que es justo lo que este proyecto existe
-            para no perder. flyway-mysql es obligatorio desde Flyway 8 para
-            hablarle a MySQL.
-        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-flyway</artifactId>
@@ -100,11 +83,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!--
-            H2 en modo de compatibilidad MySQL. Los tests corren las mismas
-            migraciones de Flyway sin Docker ni base levantada; ver
-            src/test/resources/application.yml.
-        -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -116,10 +94,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!--
-            Lectura de .xlsx. Los archivos de origen son planillas y no hay forma
-            de pedirle a la empresa que publique otra cosa.
-        -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>

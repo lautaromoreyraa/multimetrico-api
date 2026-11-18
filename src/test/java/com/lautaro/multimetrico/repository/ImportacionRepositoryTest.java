@@ -26,17 +26,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * Lo que la base tiene que seguir cumpliendo de las importaciones y los perfiles.
- *
- * <p>El informe ya no vive adentro de la entidad: {@link Importacion} guarda los
- * dos contadores como columnas y las cuatro listas serializadas en texto, y quien
- * traduce en las dos direcciones es {@link ImportacionMapper}. Por eso los tests
- * lo inyectan — es la pieza cuyo ida y vuelta se está verificando.
- *
- * <p>Igual que antes, editar un perfil que ya existe es la operación normal del
- * módulo y esa regla está ahora en {@code ImportacionService.definirPerfil}.
- */
 @SpringBootTest
 class ImportacionRepositoryTest {
 
@@ -54,14 +43,6 @@ class ImportacionRepositoryTest {
                 new FormatoDeNumero(SeparadorDecimal.COMA, EscalaDeNumero.FRACCION_DE_UNO));
     }
 
-    /**
-     * El informe entero vuelve de las columnas de texto: los tres montones con su
-     * contenido, y los contadores que tienen que cuadrar con ellos.
-     *
-     * <p>Que cuadre no es un detalle: {@link Informe} revienta al construirse si
-     * los contadores y las listas no coinciden, así que este test también prueba
-     * que los dos lados —columnas y JSON— se guardaron juntos.
-     */
     @Test
     void elInformeVuelveEnteroConSusTresMontones() {
         String id = "persistencia-informe-1";
@@ -69,8 +50,6 @@ class ImportacionRepositoryTest {
 
         Importacion enCurso = mapper.aEntidad(id, perfil("informe-completo"), periodo, periodo.atDay(20));
 
-        // 3 filas leidas = 1 importada + 1 rechazada + 1 pendiente. Las
-        // discrepancias de lider no suman: esa fila se importo igual.
         mapper.terminar(enCurso, new Informe(
                 3,
                 1,
@@ -101,11 +80,6 @@ class ImportacionRepositoryTest {
                 .satisfies(discrepancia -> assertThat(discrepancia.liderDelPadron()).isEqualTo("PERALTA SILVIA"));
     }
 
-    /**
-     * Una importación se guarda varias veces sobre la misma fila —en curso,
-     * después terminada o rechazada, después cada pendiente que alguien resuelve
-     * a mano—, así que guardar dos veces el mismo id actualiza en vez de duplicar.
-     */
     @Test
     void guardarDosVecesLaMismaImportacionActualizaLaFilaEnVezDeDuplicarla() {
         String id = "persistencia-informe-2";
@@ -132,14 +106,6 @@ class ImportacionRepositoryTest {
                 .filteredOn(i -> i.id().equals(id)).hasSize(1);
     }
 
-    /**
-     * El instante de alta lo pone la auditoría de JPA, no el código.
-     *
-     * <p>Es nuevo: {@code iniciada} se seteaba en el constructor y ahora lleva
-     * {@code @CreatedDate}. Vale dejarlo escrito porque de ese campo depende el
-     * orden del historial, y una importación sin él ni siquiera se puede guardar
-     * —la columna es {@code NOT NULL}—.
-     */
     @Test
     void elInstanteDeAltaLoPoneLaAuditoriaAlPersistir() {
         String id = "persistencia-informe-3";
@@ -150,10 +116,6 @@ class ImportacionRepositoryTest {
         assertThat(importaciones.findById(id).orElseThrow().iniciada()).isNotNull();
     }
 
-    /**
-     * El perfil es dato: guardarlo con un nombre que ya existe lo edita. Es lo que
-     * pasa cada vez que la empresa renombra una columna del reporte.
-     */
     @Test
     void guardarUnPerfilConElMismoNombreLoEditaEnVezDeDuplicarlo() {
         servicio.definirPerfil(perfil("fcr-semanal"));
@@ -165,7 +127,6 @@ class ImportacionRepositoryTest {
                 .filteredOn(p -> p.nombre().equalsIgnoreCase("fcr-semanal")).hasSize(1);
     }
 
-    /** El formato de número del perfil vuelve entero, que es de lo que depende leer bien el archivo. */
     @Test
     void elFormatoDeNumeroDelPerfilVuelveDeLaBase() {
         servicio.definirPerfil(perfil("fcr-fraccion"));
@@ -177,7 +138,6 @@ class ImportacionRepositoryTest {
         });
     }
 
-    /** "Cualquier hoja" es un null en el dominio y tiene que seguir siéndolo. */
     @Test
     void unPerfilSinHojaVuelveSinHoja() {
         servicio.definirPerfil(new PerfilDeImportacion("sin-hoja", Metrica.NPS, null, 2,

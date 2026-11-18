@@ -19,14 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * La carga de incentivos y su lectura.
- *
- * <p><b>Período propio por test.</b> La base H2 se comparte entre todas las
- * clases y también entre los métodos de una misma clase, así que dos tests que
- * carguen incentivos del mismo período se ven entre sí. Es la trampa que el
- * handoff documenta y que ya rompió tests dos veces.
- */
 @SpringBootTest
 class IncentivoServiceTest {
 
@@ -48,8 +40,6 @@ class IncentivoServiceTest {
     @BeforeEach
     void cargarPadron() {
         periodo = YearMonth.of(2060, 1).plusMonths(MES.getAndIncrement());
-        // Instancias nuevas en cada test y no las constantes: una entidad ya
-        // guardada tiene id, y volver a persistirla la rechaza JPA como detached.
         padrones.cargar(new Padron(periodo, List.of(
                 copia(FLAVIA), copia(HECTOR), copia(ANA), copia(ANABELA))));
     }
@@ -86,15 +76,6 @@ class IncentivoServiceTest {
         assertThat(importeDe(equipo.filas(), "q200")).isEqualByComparingTo("138900.5");
     }
 
-    /**
-     * El asesor que no vino en la planilla <b>aparece igual, con el importe
-     * vacío</b>.
-     *
-     * <p>Es la propiedad que el multimétrico ya tiene y que la planilla original
-     * no: se recorre del padrón hacia los datos, no al revés. Si se recorriera al
-     * revés, la persona sin importe desaparecería de la lista y nadie notaría que
-     * falta.
-     */
     @Test
     void quienNoVinoEnElArchivoApareceConElImporteVacio() {
         cargar(PlanillaSintetica.hoja("Datos")
@@ -109,15 +90,6 @@ class IncentivoServiceTest {
         assertThat(importeDe(equipo.filas(), "q200")).isNull();
     }
 
-    /**
-     * El importe que falta <b>no se cuenta como cero</b> en el total.
-     *
-     * <p>Acá el criterio es al revés que en el multimétrico, y es deliberado: una
-     * métrica sin archivo bonifica cero porque la bonificación es una regla del
-     * pliego que se puede aplicar igual. Un importe no tiene ninguna regla — llega
-     * calculado o no llega—, así que sumar cero afirmaría algo sobre la
-     * liquidación de alguien que nadie afirmó.
-     */
     @Test
     void elTotalSumaSoloLoQueVino() {
         cargar(PlanillaSintetica.hoja("Datos")
@@ -131,7 +103,6 @@ class IncentivoServiceTest {
         assertThat(equipo.sinImporte()).isEqualTo(1);
     }
 
-    /** Ninguna fila se pierde: la que no se puede atribuir sale como rechazada. */
     @Test
     void unNombreQueNoEstaEnElPadronSeRechazaConSuFila() {
         CargaDeIncentivos carga = cargar(PlanillaSintetica.hoja("Datos")
@@ -149,13 +120,6 @@ class IncentivoServiceTest {
         });
     }
 
-    /**
-     * Un nombre ambiguo se rechaza <b>nombrando a los candidatos</b>.
-     *
-     * <p>"SOSA ANA" es principio de "SOSA ANA MARIA" y de "SOSA ANABELA ROSA". Un
-     * mensaje que dijera sólo "el nombre es ambiguo" obligaría a ir a buscar
-     * cuáles eran; con los dos escritos, se corrige el archivo y listo.
-     */
     @Test
     void unNombreAmbiguoSeRechazaConLosCandidatos() {
         CargaDeIncentivos carga = cargar(PlanillaSintetica.hoja("Datos")
@@ -171,13 +135,6 @@ class IncentivoServiceTest {
         });
     }
 
-    /**
-     * Volver a cargar corrige: <b>gana el último importe cargado</b>.
-     *
-     * <p>Mismo contrato que las mediciones, y depende de lo mismo: el
-     * {@code ORDER BY id} del repositorio. Si alguien lo cambia, la corrección que
-     * subieron ayer deja de ganar sin que nada avise.
-     */
     @Test
     void volverACargarPisaElImporteAnterior() {
         cargar(PlanillaSintetica.hoja("Datos")
@@ -194,7 +151,6 @@ class IncentivoServiceTest {
         assertThat(importeDe(equipo.filas(), "q100")).isEqualByComparingTo("175500");
     }
 
-    /** Sin líder, la operación entera. */
     @Test
     void sinLiderTraeLaOperacionEntera() {
         cargar(PlanillaSintetica.hoja("Datos").fila("ASESOR", "IMPORTE").bytes());

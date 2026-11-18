@@ -4,29 +4,10 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/**
- * Lo configurable de la seguridad, todo desde el entorno.
- *
- * <h2>El secreto no tiene default, y es lo importante de esta clase</h2>
- *
- * <p>Un default hace que la aplicación arranque igual con una clave conocida.
- * Entonces el día que alguien se olvida de configurarla en producción no se
- * entera de nada: los tokens se firman con la clave que está en el repositorio y
- * cualquiera que lo haya leído puede fabricarse uno de administrador.
- *
- * <p>Por eso acá falla al arrancar. Un arranque que falla con un mensaje claro se
- * arregla en dos minutos; una aplicación andando con la clave de ejemplo puede
- * pasar meses sin que nadie lo note.
- *
- * <p>El mínimo de 32 caracteres tampoco es capricho: HS256 firma con una clave de
- * 256 bits, y JJWT rechaza una más corta con un {@code WeakKeyException} que no
- * explica qué hay que hacer. Mejor decirlo acá.
- */
 @Component
 @ConfigurationProperties(prefix = "multimetrico.seguridad")
 public class PropiedadesDeSeguridad {
 
-    /** Caracteres mínimos del secreto: 32 × 8 = los 256 bits que pide HS256. */
     private static final int MINIMO_DEL_SECRETO = 32;
 
     private Jwt jwt = new Jwt();
@@ -81,7 +62,6 @@ public class PropiedadesDeSeguridad {
 
         private String secreto;
 
-        /** Ocho horas: un turno. Ver `application.properties`. */
         private long minutosDeVigencia = 480;
 
         private String emisor = "multimetrico-api";
@@ -111,13 +91,6 @@ public class PropiedadesDeSeguridad {
         }
     }
 
-    /**
-     * El primer administrador, para poder entrar a una base recién creada.
-     *
-     * <p>Sin contraseña configurada no se crea nada. Es deliberado: un admin con
-     * contraseña por defecto en una base que acaba de quedar expuesta es peor que
-     * una base a la que todavía no se puede entrar.
-     */
     public static class AdminInicial {
 
         private String legajo = "admin";

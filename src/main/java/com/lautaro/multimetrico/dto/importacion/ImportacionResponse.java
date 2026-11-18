@@ -7,18 +7,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
-/**
- * El informe de una importación.
- *
- * <p>Las cuentas van arriba de todo y con {@code cuadra} explícito. La pregunta
- * que alguien se hace al subir un archivo no es "¿funcionó?" sino "¿entró todo?",
- * y esa se contesta con cuatro números que tienen que sumar.
- *
- * <p>{@code RECHAZADA} no es "terminó con rechazos": es que el archivo no
- * coincidía con el perfil y no entró <b>nada</b>. Los contadores quedan en cero y
- * el motivo está en {@code desajustes}. Son dos situaciones con acciones
- * distintas y la pantalla las separa.
- */
 public record ImportacionResponse(
         String id,
         String perfil,

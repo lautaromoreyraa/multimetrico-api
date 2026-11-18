@@ -18,15 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * Los perfiles de importación: dónde está cada cosa dentro de una planilla de
- * origen.
- *
- * <p>Está separado de {@link ImportacionController} aunque los dos usen el mismo
- * servicio, porque son dos recursos distintos y dos momentos distintos: el perfil
- * se define una vez cuando aparece una fuente nueva, y las importaciones se
- * suben todas las semanas.
- */
 @RestController
 @RequestMapping("/api/perfiles")
 public class PerfilController {
@@ -50,12 +41,6 @@ public class PerfilController {
         return mapper.aResponses(servicio.perfiles());
     }
 
-    /**
-     * Devuelve las columnas del archivo con valores de ejemplo.
-     *
-     * <p>Es el arranque cuando llega una fuente nueva: el sistema no adivina qué
-     * columna es cuál, muestra lo que hay y una persona arma el perfil mirándolo.
-     */
     @PostMapping("/inspeccion")
     public InspeccionResponse inspeccionar(
             @RequestParam("archivo") MultipartFile archivo,

@@ -15,32 +15,6 @@ import java.time.YearMonth;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-/**
- * Una carga de archivo, con su informe adentro.
- *
- * <p>La clave primaria es el UUID que ya genera el servicio y devuelve la API,
- * no un autoincremental: ese id sale por la respuesta del {@code POST} apenas se
- * recibe el archivo, mucho antes de que la importación termine, y es por donde
- * se la consulta después. Un id interno distinto del público sería un segundo
- * identificador para la misma cosa.
- *
- * <p>Una importación se escribe varias veces sobre la misma fila: primero
- * {@link EstadoDeImportacion#EN_CURSO} apenas llega el archivo, después
- * {@code TERMINADA} o {@code RECHAZADA} cuando el procesamiento la resuelve, y
- * otra vez cada vez que alguien resuelve un pendiente a mano. Por eso tiene
- * mutadores y el resto de las entidades no.
- *
- * <p>Las cuatro listas del informe van serializadas en columnas de texto; el
- * porqué está en {@code JsonUtil}, y quien las arma y las lee es
- * {@code ImportacionMapper}. Acá viajan como {@link String} a propósito: la
- * entidad no tiene por qué conocer los DTOs del informe, y la serialización de lo
- * que se guarda no puede cambiar porque alguien ajustó cómo se ve la API.
- *
- * <p>{@code iniciada} la pone la auditoría de Spring Data ({@code @CreatedDate}),
- * no el código: es el instante del alta y no hay ningún caso en que convenga
- * poder pasarlo a mano. {@code terminada} sí es del negocio —es cuándo dejó de
- * procesar— y la escribe el servicio.
- */
 @Entity
 @Table(name = "importacion")
 @EntityListeners(AuditingEntityListener.class)
@@ -67,12 +41,6 @@ public class Importacion {
     @Column(name = "estado", nullable = false, length = 20)
     private EstadoDeImportacion estado;
 
-    /**
-     * Los dos contadores sí son columnas: son lo único del informe que se cuenta
-     * o se compara entre importaciones, y son los que sostienen la invariante
-     * "importadas + rechazadas + pendientes == filas leídas" que revalida
-     * {@code Informe} al reconstruirse.
-     */
     @Column(name = "filas_leidas", nullable = false)
     private int filasLeidas;
 
@@ -101,7 +69,6 @@ public class Importacion {
     protected Importacion() {
     }
 
-    /** Una importación recién recibida: sin informe todavía. */
     public Importacion(String id, String perfil, Metrica metrica, YearMonth periodo, LocalDate fechaDeCorte) {
         this.id = id;
         this.perfil = perfil;
@@ -113,13 +80,6 @@ public class Importacion {
         this.importadas = 0;
     }
 
-    /**
-     * Deja anotado el informe sin tocar el estado.
-     *
-     * <p>Es lo que hace falta cuando alguien resuelve un pendiente a mano: la
-     * importación ya estaba {@code TERMINADA} y sigue estándolo, pero una fila
-     * pasó de pendiente a importada.
-     */
     public void anotarInforme(int filasLeidas, int importadas, String rechazadasJson,
             String pendientesJson, String discrepanciasJson) {
 
@@ -139,12 +99,6 @@ public class Importacion {
         this.terminada = Instant.now();
     }
 
-    /**
-     * El archivo no coincidía con el perfil: no entró <b>nada</b>.
-     *
-     * <p>Los contadores quedan en cero y el informe vacío. Es distinto de
-     * terminar con rechazos, y la pantalla lo muestra distinto.
-     */
     public void rechazar(String desajustesJson) {
         anotarInforme(0, 0, null, null, null);
         this.desajustesJson = desajustesJson;

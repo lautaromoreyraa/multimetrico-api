@@ -14,13 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * El alta de usuarios, que sólo hace un administrador.
- *
- * <p>Que sea de ADMIN lo fija {@code SeguridadConfig} para toda la ruta, no una
- * anotación por método: una regla en un solo lugar no se puede olvidar en el
- * método que se agregue mañana.
- */
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {

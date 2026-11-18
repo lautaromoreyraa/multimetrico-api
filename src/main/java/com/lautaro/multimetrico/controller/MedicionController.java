@@ -34,12 +34,6 @@ public class MedicionController {
         this.mapper = mapper;
     }
 
-    /**
-     * Alta en lote. Siempre agrega: no existe un PUT que pise lo cargado.
-     *
-     * <p>Es un 201 y no un 200 porque cada carga crea mediciones nuevas, incluso
-     * cuando repite asesores y métricas que ya estaban.
-     */
     @PostMapping
     public ResponseEntity<AltaResponse> registrar(@Valid @RequestBody MedicionesRequest request) {
         List<Medicion> registradas = servicio.registrar(mapper.aEntidades(request));
@@ -47,13 +41,6 @@ public class MedicionController {
                 .body(mapper.aAlta(request.periodo(), registradas));
     }
 
-    /**
-     * La historia del mes, opcionalmente de un asesor y de una métrica.
-     *
-     * <p>Sin filtros trae la operación entera. Los dos filtros juntos —que es el
-     * uso real— dan la serie de una métrica de una persona dentro del mes, con
-     * la vigente marcada.
-     */
     @GetMapping("/{periodo}")
     public HistoriaResponse historia(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,

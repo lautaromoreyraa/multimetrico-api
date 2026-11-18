@@ -17,18 +17,6 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Las mediciones: guardar la historia y decidir cuál de todas es la que vale.
- *
- * <p>Acá vive el desempate, que antes era un método de {@code MedicionesVigentes}.
- * El criterio: <b>gana la del corte más reciente y, empatado el corte, la última
- * cargada</b>, porque dos mediciones con la misma fecha son dos cargas del mismo
- * archivo y la segunda es la corrección.
- *
- * <p>Eso obliga a recorrer la historia <b>en orden de carga</b>, tratando cada
- * medición como candidata a desplazar a la que quedó atrás. El repositorio
- * devuelve en ese orden y no es negociable: ver {@code MedicionRepository}.
- */
 @Service
 public class MedicionServiceImpl implements MedicionService {
 
@@ -38,14 +26,6 @@ public class MedicionServiceImpl implements MedicionService {
         this.repositorio = repositorio;
     }
 
-    /**
-     * Guarda el lote entero en una transacción.
-     *
-     * <p>El lote es un archivo semanal: o entra completo o no entra ninguna fila.
-     * Media importación guardada es peor que ninguna, porque el informe diría que
-     * entraron N y en la base habría menos, y nadie tendría cómo saber cuáles
-     * faltan.
-     */
     @Override
     @Transactional
     public List<Medicion> registrar(List<Medicion> mediciones) {
@@ -90,12 +70,6 @@ public class MedicionServiceImpl implements MedicionService {
         return vigentes;
     }
 
-    /**
-     * Se queda con la última de cada métrica.
-     *
-     * <p>{@code historia} tiene que venir en orden de carga. Ver
-     * {@link Medicion#desplazaA}.
-     */
     private static Map<Metrica, Medicion> ultimasPorMetrica(List<Medicion> historia) {
         Map<Metrica, Medicion> vigentes = new EnumMap<>(Metrica.class);
         for (Medicion medicion : historia) {
@@ -107,12 +81,6 @@ public class MedicionServiceImpl implements MedicionService {
         return vigentes;
     }
 
-    /**
-     * El valor vigente de cada métrica, con su corte pegado.
-     *
-     * <p>Una métrica ausente queda ausente: no se completa con cero. Un cero es un
-     * desempeño malísimo y un faltante es un archivo que todavía no llegó.
-     */
     private static MedicionesVigentes armar(List<Medicion> historia) {
         Map<Metrica, MedicionVigente> porMetrica = new EnumMap<>(Metrica.class);
         ultimasPorMetrica(historia).forEach((metrica, medicion) ->
@@ -121,7 +89,6 @@ public class MedicionServiceImpl implements MedicionService {
         return porMetrica.isEmpty() ? MedicionesVigentes.ninguna() : new MedicionesVigentes(porMetrica);
     }
 
-    /** Agrupa por legajo conservando el orden de carga dentro de cada uno. */
     private static Map<String, List<Medicion>> porLegajo(List<Medicion> historia) {
         Map<String, List<Medicion>> agrupadas = new LinkedHashMap<>();
         for (Medicion medicion : historia) {

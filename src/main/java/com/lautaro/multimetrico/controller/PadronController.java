@@ -55,10 +55,6 @@ public class PadronController {
         return servicio.periodos();
     }
 
-    /**
-     * El equipo de un líder. Sin el parámetro devuelve la operación entera, que
-     * es como viene el archivo de origen.
-     */
     @GetMapping("/{periodo}")
     public List<AsesorResponse> ver(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
@@ -77,19 +73,6 @@ public class PadronController {
         return servicio.lideres(periodo);
     }
 
-    /**
-     * Cruza los nombres de un archivo contra el padrón sin importar nada.
-     *
-     * <p>Pensado para correr antes de subir: deja ver qué filas van a empalmar y
-     * cuáles no, mientras todavía se puede arreglar.
-     */
-    /**
-     * Suma una persona a la nómina del mes.
-     *
-     * <p>Existe para corregir de a uno: el padrón se carga entero desde un
-     * archivo, y agregar a alguien que faltaba no puede obligar a volver a subir
-     * las cincuenta filas.
-     */
     @PostMapping("/{periodo}/asesores")
     public ResponseEntity<AsesorResponse> agregar(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
@@ -101,13 +84,6 @@ public class PadronController {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.aResponse(agregado));
     }
 
-    /**
-     * Corrige el nombre o el equipo de alguien.
-     *
-     * <p>El legajo va en la URL y no en el cuerpo porque <b>no se puede
-     * cambiar</b>: es la identidad con la que se guardaron sus mediciones e
-     * incentivos. Ver {@code Asesor.corregir}.
-     */
     @PutMapping("/{periodo}/asesores/{legajo}")
     public AsesorResponse corregir(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
@@ -118,15 +94,6 @@ public class PadronController {
                 servicio.corregirAsesor(periodo, legajo, request.nombre(), request.lider()));
     }
 
-    /**
-     * Saca a una persona de la nómina del mes.
-     *
-     * <p>Deja de aparecer en el multimétrico y en los incentivos. Sus mediciones e
-     * importes quedan guardados: si vuelve a cargarse, vuelven con ella.
-     *
-     * <p>Es un DELETE, así que pide cuenta de administrador — lo decide
-     * {@code SeguridadConfig} por el verbo, no una anotación acá.
-     */
     @DeleteMapping("/{periodo}/asesores/{legajo}")
     public AsesorResponse quitar(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
@@ -141,7 +108,6 @@ public class PadronController {
         return resolucionMapper.aResponse(servicio.resolver(periodo, request.nombres()));
     }
 
-    /** Una persona confirma que un texto es tal legajo; el sistema no vuelve a preguntar. */
     @PostMapping("/{periodo}/alias")
     public AliasConfirmadoResponse confirmarAlias(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,

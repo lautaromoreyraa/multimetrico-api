@@ -15,13 +15,6 @@ import java.time.YearMonth;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/**
- * Los dos defectos que originaron el proyecto —bandas superpuestas y huecos
- * entre bandas— tienen que ser imposibles de guardar.
- *
- * <p>Se instancia la implementación a mano y no se levanta Spring: el validador
- * no tiene dependencias, y estos ocho tests corren en milisegundos.
- */
 class ValidadorDePliegoTest {
 
     private final ValidadorDePliego validador = new ValidadorDePliegoImpl();
@@ -31,11 +24,6 @@ class ValidadorDePliegoTest {
         assertThat(validador.validar(PliegoDeEjemplo.sano())).isEmpty();
     }
 
-    /**
-     * El caso real: una banda termina en 681 y la siguiente arranca en 680, así
-     * que 680 pertenece a las dos. En la planilla lo resuelve la primera
-     * coincidencia, en silencio.
-     */
     @Test
     void detectaBandasSuperpuestas() {
         Escala superpuesta = new Escala(Metrica.TMO, n("3"), List.of(
@@ -49,11 +37,6 @@ class ValidadorDePliegoTest {
         assertThat(violaciones.getFirst().mensaje()).contains("680", "681");
     }
 
-    /**
-     * El otro caso real: las bandas se escriben con el número redondeado para
-     * mostrar, y entre el 80,0% de una y el 80,1% de la siguiente no hay nada.
-     * Un valor de 80,04% no cae en ninguna.
-     */
     @Test
     void detectaHuecosEntreBandas() {
         Escala conHueco = new Escala(Metrica.FCR, n("3.5"), List.of(
@@ -111,7 +94,6 @@ class ValidadorDePliegoTest {
                 .contains(TipoDeViolacion.METRICA_DUPLICADA);
     }
 
-    /** Un pliego roto de varias formas devuelve todos los problemas, no el primero. */
     @Test
     void informaTodasLasViolacionesDeUnaVez() {
         Escala rota = new Escala(Metrica.NPS, n("9"), List.of(

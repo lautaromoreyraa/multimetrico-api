@@ -10,13 +10,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/**
- * El informe de resolución, escrito a mano.
- *
- * <p>El conteo por estrategia se calcula acá y no en el servicio porque es una
- * lectura de presentación: sirve para que quien mira el informe se dé cuenta de
- * que el archivo viene truncando nombres. No cambia ninguna decisión del sistema.
- */
 @Component
 public class ResolucionMapperImpl implements ResolucionMapper {
 
@@ -44,14 +37,6 @@ public class ResolucionMapperImpl implements ResolucionMapper {
         return new ResolucionResponse.PendienteResponse(p.textoOriginal(), motivo(p), p.candidatos());
     }
 
-    /**
-     * El motivo, redactado.
-     *
-     * <p>Los dos casos piden acciones distintas y el texto lo dice: al que no se
-     * parece a nadie le falta un alta en el padrón, el ambiguo necesita que
-     * alguien desempate. Un enum crudo obligaría a cada pantalla a redactar esto
-     * por su cuenta.
-     */
     private static String motivo(Pendiente pendiente) {
         return switch (pendiente.motivo()) {
             case SIN_CANDIDATOS -> pendiente.candidatos().isEmpty()

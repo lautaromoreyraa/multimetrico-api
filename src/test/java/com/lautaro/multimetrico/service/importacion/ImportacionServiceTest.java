@@ -25,26 +25,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * La importación de punta a punta, sobre planillas armadas en el momento.
- *
- * <p><b>Período propio.</b> {@code @SpringBootTest} comparte el contexto —y con
- * él la base— entre clases de test, así que las mediciones se acumulan y un
- * pliego cargado no se puede pisar. Cada clase usa su propio {@link YearMonth}
- * para no chocar con las demás.
- */
 @SpringBootTest
 class ImportacionServiceTest {
 
-    /**
-     * Un período distinto por cada test, no solo por cada clase.
-     *
-     * <p>La base vive en el contexto de Spring, que se comparte entre
-     * <b>todos</b> los tests: dos métodos de esta misma clase que importen FCR
-     * para el mismo asesor y el mismo período se ven las mediciones el uno al
-     * otro. Costó un fallo descubrirlo. Con un mes propio cada uno, cada test
-     * observa solo lo suyo.
-     */
     private static final AtomicInteger MES = new AtomicInteger();
 
     private YearMonth periodo;
@@ -84,24 +67,17 @@ class ImportacionServiceTest {
                 new FormatoDeNumero(SeparadorDecimal.COMA, EscalaDeNumero.TAL_CUAL)));
     }
 
-    /**
-     * La propiedad que define el módulo: cada fila del archivo termina en
-     * exactamente uno de los tres montones, y los tres suman lo que se leyó.
-     *
-     * <p>Es lo que la planilla no garantiza. Ahí una fila que no empalma no
-     * produce ningún síntoma: el total sale igual, un poco más chico.
-     */
     @Test
     void ningunaFilaSePierde() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
                 .fila("ASESOR", "VALOR", "LIDER")
-                .filaConValor("AGUIRRE FLAVIA Y", 82.4, "PERALTA SILVIA")   // prefijo único
-                .filaConValor("MINO HECTOR BAUTISTA", 79.1, "PERALTA SILVIA") // nombre exacto
-                .filaConValor("SOSA ANA", 75.0, "LEDESMA JORGE")            // ambiguo -> pendiente
-                .filaConValor("PEREZ QUIENSABE", 60.0, "LEDESMA JORGE")     // nadie -> pendiente
-                .fila("QUEDO SIN VALOR", "", "PERALTA SILVIA")              // sin valor -> rechazo
-                .fila("", "70", "PERALTA SILVIA")                           // sin asesor -> rechazo
-                .filaVacia()                                                 // no se cuenta
+                .filaConValor("AGUIRRE FLAVIA Y", 82.4, "PERALTA SILVIA")
+                .filaConValor("MINO HECTOR BAUTISTA", 79.1, "PERALTA SILVIA")
+                .filaConValor("SOSA ANA", 75.0, "LEDESMA JORGE")
+                .filaConValor("PEREZ QUIENSABE", 60.0, "LEDESMA JORGE")
+                .fila("QUEDO SIN VALOR", "", "PERALTA SILVIA")
+                .fila("", "70", "PERALTA SILVIA")
+                .filaVacia()
                 .bytes();
 
         Importacion resultado = importar(perfil("fcr-completo"), archivo);
@@ -115,7 +91,6 @@ class ImportacionServiceTest {
         assertThat(informe.cuadra()).isTrue();
     }
 
-    /** El número de fila del rechazo es el que se ve en Excel, para poder ir a buscarlo. */
     @Test
     void elRechazoDiceQueFilaYPorQue() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
@@ -132,11 +107,6 @@ class ImportacionServiceTest {
         });
     }
 
-    /**
-     * Una celda con formato de porcentaje guarda 0,805 y muestra 80,5%. Si el
-     * lector no lo detecta, el archivo entra cien veces más chico y nadie lo nota
-     * hasta que todos los alcances dan mal.
-     */
     @Test
     void unaCeldaConFormatoDePorcentajeSeInterpretaEnLasUnidadesDelPliego() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
@@ -151,11 +121,6 @@ class ImportacionServiceTest {
                 .satisfies(m -> assertThat(m.valor()).isEqualByComparingTo("80.5"));
     }
 
-    /**
-     * Si el archivo no coincide con el perfil se rechaza entero. Es preferible a
-     * importar bien la mitad: un archivo que no entró se nota, uno que entró mal
-     * no.
-     */
     @Test
     void unArchivoQueNoCoincideConElPerfilSeRechazaEntero() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
@@ -171,18 +136,6 @@ class ImportacionServiceTest {
         assertThat(mapper.desajustesDe(resultado).getFirst().toString()).contains("VALOR");
     }
 
-    /**
-     * Una importación rechazada <b>no cuadra</b>, aunque las cuentas den.
-     *
-     * <p>El invariante del {@link Informe} mira que las tres bolsas sumen las
-     * filas leídas, y en una rechazada las cuatro cifras son cero: cero más cero
-     * cierra. Así, el campo que existe para contestar "¿entró todo?" decía que sí
-     * cuando no entró nada, que es exactamente la clase de mentira tranquila que
-     * este módulo existe para no repetir.
-     *
-     * <p>La corrección vive en el mapper y no en el informe: el invariante sigue
-     * siendo cierto y no se toca. Lo que cambia es la lectura que publica la API.
-     */
     @Test
     void unaImportacionRechazadaNoCuadra() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
@@ -194,11 +147,9 @@ class ImportacionServiceTest {
 
         assertThat(resultado.estado()).isEqualTo(EstadoDeImportacion.RECHAZADA);
         assertThat(mapper.aResponse(resultado).cuadra()).isFalse();
-        // Y el informe sigue cuadrando por dentro: son dos preguntas distintas.
         assertThat(mapper.informeDe(resultado).cuadra()).isTrue();
     }
 
-    /** El nombre de la hoja también es parte del perfil. */
     @Test
     void unaHojaQueNoEstaEsDesajuste() {
         byte[] archivo = PlanillaSintetica.hoja("Otra").fila("ASESOR", "VALOR", "LIDER").bytes();
@@ -209,10 +160,6 @@ class ImportacionServiceTest {
         assertThat(mapper.desajustesDe(resultado).getFirst().toString()).contains("Otra");
     }
 
-    /**
-     * El padrón manda sobre el archivo, pero la diferencia se informa: casi
-     * siempre significa que alguien cambió de equipo y el padrón quedó viejo.
-     */
     @Test
     void siElArchivoDiceOtroLiderSeImportaIgualYSeAnotaLaDiferencia() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
@@ -230,11 +177,6 @@ class ImportacionServiceTest {
         });
     }
 
-    /**
-     * Un pendiente se resuelve para esta fila de este archivo, no como alias
-     * global: {@code SOSA ANA} apunta a dos personas y podría ser la otra el mes
-     * que viene.
-     */
     @Test
     void unPendienteSeResuelveAManoYProduceLaMedicion() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
@@ -254,7 +196,6 @@ class ImportacionServiceTest {
         assertThat(mediciones.historia(periodo, ANABELA.legajo(), Metrica.FCR)).isEmpty();
     }
 
-    /** La medición queda atada a la importación que la trajo, para poder auditarla. */
     @Test
     void laMedicionRecuerdaDeQueImportacionSalio() {
         byte[] archivo = PlanillaSintetica.hoja("Datos")
@@ -269,12 +210,6 @@ class ImportacionServiceTest {
                 .satisfies(m -> assertThat(m.origenImportacion()).isEqualTo(resultado.id()));
     }
 
-    /**
-     * Espera a que la importación deje de estar en curso.
-     *
-     * <p>El servicio procesa fuera del hilo de la petición, así que el test tiene
-     * que esperar el resultado en vez de asumirlo.
-     */
     private Importacion importar(PerfilDeImportacion perfil, byte[] archivo) {
         String id = servicio.recibir(perfil.nombre(), periodo, corte, archivo).id();
 

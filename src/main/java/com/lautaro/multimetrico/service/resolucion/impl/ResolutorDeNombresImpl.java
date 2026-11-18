@@ -18,17 +18,11 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** La resolución de nombres contra el padrón. El criterio está en la interfaz. */
 @Service
 public class ResolutorDeNombresImpl implements ResolutorDeNombres {
 
-    /** Cuántos candidatos ofrecer cuando no se pudo resolver. */
     private static final int MAXIMO_SUGERENCIAS = 3;
 
-    /**
-     * Distancia máxima para molestarse en sugerir. Por encima de esto los nombres
-     * no se parecen y listar candidatos sería ruido.
-     */
     private static final int DISTANCIA_MAXIMA_SUGERENCIA = 5;
 
     private final AliasRepository alias;
@@ -66,8 +60,6 @@ public class ResolutorDeNombresImpl implements ResolutorDeNombres {
         try {
             buscado = NombreNormalizado.de(texto);
         } catch (IllegalArgumentException e) {
-            // Un texto que no deja nada al normalizar (solo símbolos, o el
-            // encabezado de la planilla colado como fila) no es un nombre.
             return Optional.empty();
         }
 
@@ -117,12 +109,6 @@ public class ResolutorDeNombresImpl implements ResolutorDeNombres {
         return Pendiente.sinCandidatos(texto, mapper.aCandidatos(sugerir(padron, buscado)));
     }
 
-    /**
-     * Candidatos ordenados por parecido, para que una persona elija.
-     *
-     * <p>Se compara contra el nombre entero y no solo contra el apellido: cuando
-     * la codificación rompe una eñe, el daño suele estar justo ahí.
-     */
     private List<Asesor> sugerir(Padron padron, NombreNormalizado buscado) {
         return padron.asesores().stream()
                 .map(asesor -> new Object() {
@@ -136,12 +122,6 @@ public class ResolutorDeNombresImpl implements ResolutorDeNombres {
                 .toList();
     }
 
-    /**
-     * Distancia de edición entre dos textos: cuántas inserciones, borrados o
-     * sustituciones hacen falta para convertir uno en el otro.
-     *
-     * <p>Solo para ordenar sugerencias. Nunca decide una resolución.
-     */
     private static int distancia(String a, String b) {
         int[] anterior = new int[b.length() + 1];
         int[] actual = new int[b.length() + 1];

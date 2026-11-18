@@ -11,7 +11,6 @@ import com.lautaro.multimetrico.mapper.PerfilMapper;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/** El mapper del perfil de importación, escrito a mano. */
 @Component
 public class PerfilMapperImpl implements PerfilMapper {
 

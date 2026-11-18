@@ -1,24 +1,6 @@
-/**
- * Un escritor minimo de .xlsx, sin dependencias.
- *
- * Existe porque el seed necesita subir una planilla de incentivos y el modulo
- * lee archivos de verdad: mandar un CSV o un JSON probaria otra cosa. La
- * alternativa era agregarle un package.json al repo de la API -que hoy no tiene
- * ninguno- y una dependencia entera para escribir dos columnas.
- *
- * Lo que genera es el .xlsx mas simple que POI acepta: un libro, una hoja, y las
- * celdas de texto en linea (inlineStr) en vez de la tabla de cadenas
- * compartidas, que es la parte del formato que mas codigo pide y que aca no
- * ahorra nada.
- *
- * NO es una libreria de proposito general: no hace formatos, ni formulas, ni
- * fechas, ni varias hojas. Si algun dia hace falta algo de eso, la respuesta es
- * una dependencia de verdad y no agrandar esto.
- */
 
 import { deflateRawSync } from 'node:zlib'
 
-/* -- CRC32, que el ZIP pide por entrada ------------------------------------ */
 
 const TABLA_CRC = (() => {
   const tabla = new Int32Array(256)
@@ -36,15 +18,7 @@ function crc32(buffer) {
   return (c ^ -1) >>> 0
 }
 
-/* -- el ZIP ---------------------------------------------------------------- */
 
-/**
- * Arma un ZIP con las entradas dadas.
- *
- * Escribe la fecha en cero: un .xlsx cuya fecha de modificacion cambia en cada
- * corrida produce un archivo distinto cada vez, y el seed existe justamente para
- * ser reproducible.
- */
 function zip(entradas) {
   const locales = []
   const centrales = []
@@ -58,23 +32,23 @@ function zip(entradas) {
 
     const local = Buffer.alloc(30)
     local.writeUInt32LE(0x04034b50, 0)
-    local.writeUInt16LE(20, 4) // version necesaria
-    local.writeUInt16LE(0, 6) // flags
-    local.writeUInt16LE(8, 8) // metodo: deflate
-    local.writeUInt16LE(0, 10) // hora
-    local.writeUInt16LE(0, 12) // fecha
+    local.writeUInt16LE(20, 4)
+    local.writeUInt16LE(0, 6)
+    local.writeUInt16LE(8, 8)
+    local.writeUInt16LE(0, 10)
+    local.writeUInt16LE(0, 12)
     local.writeUInt32LE(crc, 14)
     local.writeUInt32LE(comprimido.length, 18)
     local.writeUInt32LE(datos.length, 22)
     local.writeUInt16LE(nombreBytes.length, 26)
-    local.writeUInt16LE(0, 28) // extra
+    local.writeUInt16LE(0, 28)
 
     locales.push(local, nombreBytes, comprimido)
 
     const central = Buffer.alloc(46)
     central.writeUInt32LE(0x02014b50, 0)
-    central.writeUInt16LE(20, 4) // version que lo creo
-    central.writeUInt16LE(20, 6) // version necesaria
+    central.writeUInt16LE(20, 4)
+    central.writeUInt16LE(20, 6)
     central.writeUInt16LE(0, 8)
     central.writeUInt16LE(8, 10)
     central.writeUInt16LE(0, 12)
@@ -83,11 +57,11 @@ function zip(entradas) {
     central.writeUInt32LE(comprimido.length, 20)
     central.writeUInt32LE(datos.length, 24)
     central.writeUInt16LE(nombreBytes.length, 28)
-    central.writeUInt16LE(0, 30) // extra
-    central.writeUInt16LE(0, 32) // comentario
-    central.writeUInt16LE(0, 34) // disco
-    central.writeUInt16LE(0, 36) // atributos internos
-    central.writeUInt32LE(0, 38) // atributos externos
+    central.writeUInt16LE(0, 30)
+    central.writeUInt16LE(0, 32)
+    central.writeUInt16LE(0, 34)
+    central.writeUInt16LE(0, 36)
+    central.writeUInt32LE(0, 38)
     central.writeUInt32LE(offset, 42)
 
     centrales.push(central, nombreBytes)
@@ -99,20 +73,18 @@ function zip(entradas) {
 
   const fin = Buffer.alloc(22)
   fin.writeUInt32LE(0x06054b50, 0)
-  fin.writeUInt16LE(0, 4) // disco
-  fin.writeUInt16LE(0, 6) // disco del directorio
+  fin.writeUInt16LE(0, 4)
+  fin.writeUInt16LE(0, 6)
   fin.writeUInt16LE(entradas.length, 8)
   fin.writeUInt16LE(entradas.length, 10)
   fin.writeUInt32LE(directorio.length, 12)
   fin.writeUInt32LE(cuerpo.length, 16)
-  fin.writeUInt16LE(0, 20) // comentario
+  fin.writeUInt16LE(0, 20)
 
   return Buffer.concat([cuerpo, directorio, fin])
 }
 
-/* -- el XML de la hoja ----------------------------------------------------- */
 
-/** 0 -> A, 25 -> Z, 26 -> AA. */
 function columna(indice) {
   let nombre = ''
   let n = indice
@@ -134,17 +106,9 @@ function celda(referencia, valor) {
   if (typeof valor === 'number') {
     return `<c r="${referencia}"><v>${valor}</v></c>`
   }
-  // Texto en linea: evita la tabla de cadenas compartidas, que es la parte del
-  // formato que mas codigo pide y que en dos columnas no ahorra nada.
   return `<c r="${referencia}" t="inlineStr"><is><t>${escapar(valor)}</t></is></c>`
 }
 
-/**
- * Un .xlsx de una hoja, como Buffer.
- *
- * @param {string} hoja el nombre de la pestana
- * @param {Array<Array<string|number>>} filas la primera es el encabezado
- */
 export function libroDeUnaHoja(hoja, filas) {
   const xmlFilas = filas
     .map((fila, i) => {

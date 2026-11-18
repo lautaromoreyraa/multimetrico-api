@@ -17,21 +17,6 @@ import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/**
- * El mapper del pliego, escrito a mano.
- *
- * <p>Escrito a mano no es una preferencia de estilo acá: {@link #aEntidad} tiene
- * lógica que ningún generador podría producir. {@link Banda} rechaza en su
- * constructor un {@code desde} mayor o igual al {@code hasta}, porque es un
- * invariante real y no debería existir una banda así ni por un instante. Pero si
- * se dejara explotar la primera, el supervisor vería un solo problema por
- * intento.
- *
- * <p>Entonces cada banda se construye por separado y las que fallan se anotan.
- * Recién si todas se pudieron construir se arma el pliego y se lo manda al
- * validador, que busca los problemas del conjunto —huecos, superposiciones,
- * pesos—. Así el invariante se mantiene y el informe sigue siendo completo.
- */
 @Component
 public class PliegoMapperImpl implements PliegoMapper {
 
@@ -99,8 +84,6 @@ public class PliegoMapperImpl implements PliegoMapper {
                 escala.metrica().sentido().name(),
                 escala.metrica().unidad(),
                 escala.peso(),
-                // Se devuelven ordenadas: el que las lee espera una tabla, no el
-                // orden en que quedaron cargadas.
                 escala.ordenadas().stream()
                         .map(b -> new PliegoResponse.BandaResponse(b.desde(), b.hasta(), b.resultado(), b.rango()))
                         .toList());

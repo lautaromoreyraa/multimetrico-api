@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import java.time.YearMonth;
 import java.util.List;
 
-/** El padrón de un período como llega por HTTP: la nómina entera, con su líder. */
 public record PadronRequest(
         @NotNull(message = "el período es obligatorio (formato aaaa-mm)") YearMonth periodo,
         @NotEmpty(message = "el padrón necesita al menos un asesor") @Valid List<AsesorRequest> asesores) {

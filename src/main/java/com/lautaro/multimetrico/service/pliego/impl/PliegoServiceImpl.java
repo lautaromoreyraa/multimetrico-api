@@ -22,15 +22,6 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * El pliego: cargarlo una sola vez y aplicarlo siempre contra su propio período.
- *
- * <p>Acá vive el <b>motor de bandas</b>, que antes era un método de la entidad.
- * Es el cálculo central del sistema y por eso está en la capa de servicio: la
- * entidad sabe qué escalas tiene y en qué banda cae un valor; producir una
- * {@link Evaluacion} —decidir qué falta, qué quedó fuera de escala y cuánto suma
- * el total— es armar un resultado.
- */
 @Service
 public class PliegoServiceImpl implements PliegoService {
 
@@ -47,13 +38,6 @@ public class PliegoServiceImpl implements PliegoService {
         return validador.validar(pliego);
     }
 
-    /**
-     * El orden de los dos controles importa.
-     *
-     * <p>Primero se mira si ya existe y recién después se valida: a quien vuelve a
-     * subir el pliego del mes pasado hay que decirle que ya está cargado, no
-     * hacerlo corregir bandas de un archivo que igual no se iba a guardar.
-     */
     @Override
     @Transactional
     public Pliego cargar(Pliego pliego) {
@@ -87,27 +71,6 @@ public class PliegoServiceImpl implements PliegoService {
         return evaluar(buscar(periodo, campania), mediciones);
     }
 
-    /**
-     * Evalúa las mediciones de un asesor contra un pliego.
-     *
-     * <p>Acepta que falten métricas. Es lo normal y no un error: cada métrica
-     * llega en su propio archivo y con su propia fecha de corte, así que a mitad
-     * de mes es habitual tener el TMO al 21 y el FCR al 16, y que a alguien
-     * todavía no le haya llegado el NPS.
-     *
-     * <p>Lo que falta se informa como faltante y <b>no entra en {@code alcances}</b>,
-     * que es lo que permite distinguir "no hay valor" de "hay un valor que paga
-     * cero". Para el total da igual: no sumarlo es lo mismo que sumarle cero, y
-     * cero es lo que una métrica sin archivo bonifica.
-     *
-     * <p>Un valor que no cae en ninguna banda no se tapa con un cero: se informa
-     * como fuera de escala. Sobre un pliego validado no puede pasar, y si pasa es
-     * que algo se guardó sin validar y hay que verlo.
-     *
-     * <p>Es una función pura: no toca el repositorio y no depende de cuándo se la
-     * llame. Esa es la propiedad por la que recalcular marzo dentro de seis meses
-     * devuelve lo mismo que devolvió en marzo.
-     */
     @Override
     public Evaluacion evaluar(Pliego pliego, Map<Metrica, BigDecimal> mediciones) {
         Map<Metrica, Alcance> alcances = new EnumMap<>(Metrica.class);
