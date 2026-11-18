@@ -15,21 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * El pliego tiene que volver de la base exactamente como entró: si no, el mes
- * deja de ser reproducible, que es el defecto número uno del PLAN.
- *
- * <p>Con el modelo único, {@link Pliego} <em>es</em> la entidad: lo que antes se
- * verificaba sobre la traducción de ida y vuelta ahora se verifica sobre el
- * mismo objeto releído. Lo que se prueba no cambió —que los extremos abiertos
- * sigan abiertos, que los decimales no se redondeen, que el orden se conserve—,
- * cambió quién hace el trabajo.
- *
- * <p>Las lecturas traen escalas y bandas en la misma consulta gracias al
- * {@code @EntityGraph} del repositorio. Sin él, con {@code open-in-view: false},
- * cada uno de estos tests fallaría con {@code LazyInitializationException} apenas
- * toca la lista: <b>estos tests son también los que defienden ese grafo</b>.
- */
 @SpringBootTest
 class PliegoRepositoryTest {
 
@@ -38,10 +23,6 @@ class PliegoRepositoryTest {
     @Autowired
     private PliegoRepository repositorio;
 
-    /**
-     * Evaluar dejó de ser un método del pliego y pasó a la capa de servicio, así
-     * que el test del borde lo necesita inyectado.
-     */
     @Autowired
     private PliegoService pliegos;
 
@@ -64,13 +45,6 @@ class PliegoRepositoryTest {
         return repositorio.findByPeriodoAndCampaniaClave(periodo, Pliego.clave(CAMPANIA)).orElseThrow();
     }
 
-    /**
-     * Los extremos abiertos son {@code null} y siguen siéndolo al volver.
-     *
-     * <p>Guardarlos como un centinela —un cero, un número enorme— convertiría "no
-     * tiene piso" en "tiene un piso muy bajo", y la banda dejaría de atrapar los
-     * valores que se supone que atrapa.
-     */
     @Test
     void losExtremosAbiertosVuelvenAbiertos() {
         YearMonth periodo = YearMonth.of(2041, 1);
@@ -82,11 +56,6 @@ class PliegoRepositoryTest {
         assertThat(fcr.ordenadas().getLast().abiertaArriba()).isTrue();
     }
 
-    /**
-     * El rango se muestra con los números que alguien escribió, no con los seis
-     * decimales de la columna. Es el texto que ve quien carga el pliego y quien
-     * lee su alcance.
-     */
     @Test
     void elRangoDeUnaBandaSeLeeIgualDespuesDeIrYVolverDeLaBase() {
         YearMonth periodo = YearMonth.of(2041, 2);
@@ -99,15 +68,6 @@ class PliegoRepositoryTest {
         assertThat(tmo.ordenadas().get(1).rango()).isEqualTo("[600, 700)");
     }
 
-    /**
-     * El caso que el PLAN nombra: un FCR de 80,04% se muestra redondeado como
-     * "80,0%" pero se compara completo. Si la base redondeara el borde de la
-     * banda, este valor caería del otro lado.
-     *
-     * <p>La evaluación la hace ahora {@code PliegoService} y el alcance devuelve
-     * el rango <b>ya como texto</b>, así que se compara contra el string en vez de
-     * pedirle el rango a un objeto banda.
-     */
     @Test
     void unValorSobreElBordeSigueCayendoEnLaMismaBandaDespuesDeGuardarElPliego() {
         YearMonth periodo = YearMonth.of(2041, 3);
@@ -120,7 +80,6 @@ class PliegoRepositoryTest {
                         assertThat(alcance.banda()).isEqualTo("[-∞, 80.1)"));
     }
 
-    /** El orden de las escalas y el de las bandas dentro de cada escala se conservan. */
     @Test
     void lasEscalasYLasBandasVuelvenEnElOrdenEnQueSeCargaron() {
         YearMonth periodo = YearMonth.of(2041, 4);
@@ -134,15 +93,6 @@ class PliegoRepositoryTest {
                 .containsExactly("3", "1", "0");
     }
 
-    /**
-     * La campaña se busca normalizada y no según la collation del motor: MySQL
-     * compara sin distinguir mayúsculas y H2 sí las distingue, así que sin la
-     * columna de clave este test pasaría en una base y fallaría en la otra.
-     *
-     * <p>Quien normaliza cambió de lugar —antes era el adaptador, ahora es
-     * {@link Pliego#clave} en el llamador—, pero la garantía es la misma: dos
-     * escrituras distintas de la misma campaña encuentran el mismo pliego.
-     */
     @Test
     void laCampaniaSeBuscaSinDistinguirMayusculasNiEspaciosAlBorde() {
         YearMonth periodo = YearMonth.of(2041, 5);
@@ -156,7 +106,6 @@ class PliegoRepositoryTest {
                 .isFalse();
     }
 
-    /** El alcance máximo es la suma de los pesos, y los pesos también vuelven enteros. */
     @Test
     void elAlcanceMaximoSobreviveAlViajeALaBase() {
         YearMonth periodo = YearMonth.of(2041, 6);
@@ -165,15 +114,6 @@ class PliegoRepositoryTest {
         assertThat(releer(periodo).alcanceMaximo()).isEqualByComparingTo("7");
     }
 
-    /**
-     * El listado también trae las escalas cargadas.
-     *
-     * <p>No estaba en la versión anterior y se agrega acá porque
-     * {@code findAllByOrderBy...} es la otra consulta que lleva
-     * {@code @EntityGraph}: es la que alimenta {@code GET /api/pliegos}, y si el
-     * grafo se cayera de esa firma el endpoint reventaría en el mapper sin que
-     * ningún otro test lo notara.
-     */
     @Test
     void elListadoTraeLasEscalasCargadasYNoPerezosas() {
         YearMonth periodo = YearMonth.of(2041, 7);

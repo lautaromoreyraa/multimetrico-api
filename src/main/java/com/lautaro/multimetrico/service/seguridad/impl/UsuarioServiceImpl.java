@@ -18,31 +18,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Entrar y dar de alta usuarios.
- *
- * <h2>El login no dice qué falló</h2>
- *
- * <p>Legajo inexistente, contraseña equivocada y usuario desactivado devuelven el
- * mismo mensaje. Distinguirlos convertiría al login en una forma de averiguar qué
- * legajos existen, que es la mitad del trabajo de quien después prueba
- * contraseñas.
- *
- * <p>Por la misma razón se verifica la contraseña <b>aunque el usuario no
- * exista</b>: comparar contra un hash de descarte hace que las dos respuestas
- * tarden parecido. Sin eso, un "no existe" vuelve mucho más rápido que un
- * "contraseña mal", y esa diferencia de tiempo dice lo mismo que el mensaje que
- * se decidió no dar.
- */
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
 
-    /**
-     * Un hash real contra el que comparar cuando el legajo no existe.
-     *
-     * <p>Es el BCrypt de una contraseña que nadie tiene. Su único trabajo es
-     * gastar el mismo tiempo que gastaría una comparación de verdad.
-     */
     private static final String HASH_DE_DESCARTE =
             "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
@@ -66,7 +44,6 @@ public class UsuarioServiceImpl implements UsuarioService {
     public TokenResponse entrar(LoginRequest request) {
         Optional<Usuario> encontrado = repositorio.findByLegajoClave(Usuario.clave(request.legajo()));
 
-        // Siempre se compara, exista o no: ver el javadoc de la clase.
         String hash = encontrado.map(Usuario::password).orElse(HASH_DE_DESCARTE);
         boolean coincide = encoder.matches(request.password(), hash);
 
@@ -92,10 +69,6 @@ public class UsuarioServiceImpl implements UsuarioService {
                     "Ya hay un usuario con el legajo %s.".formatted(request.legajo()));
         }
 
-        // Un supervisor sin equipo no ve a nadie, y eso casi siempre es un olvido
-        // al darlo de alta y no una intención. Se rechaza al crearlo, que es
-        // cuando se puede corregir, en vez de dejar que se entere el día que
-        // entra y ve una tabla vacía.
         if (request.rol() == Rol.SUPERVISOR && (request.lider() == null || request.lider().isBlank())) {
             throw new IllegalArgumentException(
                     "Un SUPERVISOR necesita el nombre del equipo que lidera, tal como figura en el padrón.");

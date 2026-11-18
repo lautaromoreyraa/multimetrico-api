@@ -11,29 +11,6 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.util.Locale;
 
-/**
- * Lo que cobra un asesor en un mes.
- *
- * <h2>El importe llega calculado</h2>
- *
- * <p>Es la decisión más vieja del proyecto y conviene no volver a discutirla: el
- * motor de incentivos se cayó del alcance al principio porque los importes
- * <b>llegan resueltos desde la empresa</b> y se adjuntan tal cual. Esta entidad
- * guarda lo que dice esa planilla y nada más.
- *
- * <p>No hay ninguna regla que derive un importe de un alcance, y eso es
- * deliberado: inventar una acá significaría que el sistema dice un número y la
- * liquidación dice otro, y que nadie sepa cuál creer. Consecuencia práctica: no
- * se puede "recalcular" un incentivo. Si está mal, se corrige el archivo y se
- * vuelve a cargar.
- *
- * <h2>Se inserta, no se pisa</h2>
- *
- * <p>Igual que {@link Medicion}: cada carga es una fila nueva y <b>gana la última
- * cargada</b>. Vale la misma razón —cuando alguien pregunta por qué su número
- * cambió, el viejo tiene que estar en algún lado— y el mismo contrato: el
- * desempate es por id, nunca por fecha.
- */
 @Entity
 @Table(name = "incentivo")
 public class Incentivo {
@@ -60,7 +37,6 @@ public class Incentivo {
     @Column(name = "creado_en", nullable = false)
     private Instant creadoEn;
 
-    /** JPA. */
     protected Incentivo() {
     }
 
@@ -85,7 +61,6 @@ public class Incentivo {
         this.creadoEn = Instant.now();
     }
 
-    /** La forma normalizada del legajo, para buscar sin depender de la collation. */
     public static String clave(String legajo) {
         return legajo == null ? null : legajo.trim().toUpperCase(Locale.ROOT);
     }

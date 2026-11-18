@@ -9,15 +9,6 @@ import com.lautaro.multimetrico.dto.multimetrico.TramoDeArriba;
 import com.lautaro.multimetrico.mapper.MultimetricoMapper;
 import org.springframework.stereotype.Component;
 
-/**
- * El mapper del multimétrico, escrito a mano.
- *
- * <p>Tiene una decisión propia y por eso no podría generarse: la frase del tramo
- * de arriba. Se arma acá y no en cada pantalla porque es la lectura correcta de
- * la condición —alcanzar el borde alcanza, bajar de él exige cruzarlo— y dejarla
- * librada al frontend es garantizar que en algún lado diga "te faltan 0" sin
- * explicar por qué el asesor no está en la banda de arriba.
- */
 @Component
 public class MultimetricoMapperImpl implements MultimetricoMapper {
 

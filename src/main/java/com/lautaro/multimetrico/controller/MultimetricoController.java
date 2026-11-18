@@ -25,14 +25,6 @@ public class MultimetricoController {
         this.mapper = mapper;
     }
 
-    /**
-     * El multimétrico del equipo de un líder; sin {@code lider}, la operación
-     * entera.
-     *
-     * <p>El período va en la URL y la campaña es obligatoria, igual que en la
-     * evaluación del pliego: no existe "el multimétrico de ahora". Falta el
-     * pliego o el padrón de ese período y responde 404 diciendo cuál de los dos.
-     */
     @GetMapping("/{periodo}")
     public MultimetricoResponse delEquipo(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
@@ -41,7 +33,6 @@ public class MultimetricoController {
         return mapper.aResponse(servicio.delEquipo(periodo, lider, campania));
     }
 
-    /** La fila de una persona: la pantalla "mi multimétrico". */
     @GetMapping("/{periodo}/asesores/{legajo}")
     public FilaResponse deUnAsesor(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,

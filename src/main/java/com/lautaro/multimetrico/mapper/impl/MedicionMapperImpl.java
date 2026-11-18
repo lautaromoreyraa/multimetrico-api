@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/** El mapper de mediciones, escrito a mano. */
 @Component
 public class MedicionMapperImpl implements MedicionMapper {
 
@@ -56,8 +55,6 @@ public class MedicionMapperImpl implements MedicionMapper {
                         medicion.valor(),
                         medicion.fechaDeCorte(),
                         medicion.origenImportacion(),
-                        // Por id y no por valor: dos cargas iguales del mismo corte
-                        // tienen todos los campos idénticos y solo el id las separa.
                         vigentes.contains(medicion.id())))
                 .toList();
 

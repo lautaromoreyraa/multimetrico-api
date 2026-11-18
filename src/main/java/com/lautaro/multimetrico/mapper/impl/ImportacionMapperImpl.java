@@ -17,13 +17,6 @@ import java.time.YearMonth;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/**
- * El mapper de importaciones, escrito a mano.
- *
- * <p>Concentra la serialización del informe. Que esté en un solo lugar es lo que
- * permite que la entidad no conozca los DTOs y que los servicios no sepan que
- * existe un JSON en una columna.
- */
 @Component
 public class ImportacionMapperImpl implements ImportacionMapper {
 
@@ -103,21 +96,6 @@ public class ImportacionMapperImpl implements ImportacionMapper {
                 desajustesDe(importacion).stream().map(Desajuste::toString).toList());
     }
 
-    /**
-     * ¿Entró todo? Para una importación RECHAZADA la respuesta es no.
-     *
-     * <p>{@link Informe#cuadra()} mira que las tres bolsas sumen las filas
-     * leídas, y en una rechazada las cuatro cifras son cero: cero más cero
-     * cierra, así que el campo que existe para contestar "¿entró todo?" decía
-     * que sí cuando no entró <b>nada</b>. El invariante del informe sigue
-     * valiendo —no se toca—; lo que se corrige es la lectura que la API
-     * publica, que es la que alguien usa para decidir si el archivo se subió
-     * bien.
-     *
-     * <p>RECHAZADA no es "terminó con rechazos": es que el archivo no coincidía
-     * con el perfil y no se leyó ni una fila. El motivo está en
-     * {@code desajustes}.
-     */
     private static boolean cuadra(Importacion importacion, Informe informe) {
         return importacion.estado() != EstadoDeImportacion.RECHAZADA && informe.cuadra();
     }

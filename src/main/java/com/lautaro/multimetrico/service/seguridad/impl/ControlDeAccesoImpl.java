@@ -7,13 +7,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-/**
- * Lee la credencial del contexto de seguridad.
- *
- * <p>La dejó {@code FiltroDeAutenticacionJwt} como principal, así que acá no se
- * parsea nada ni se consulta la base: el legajo, el rol y el equipo ya vinieron
- * firmados en el token.
- */
 @Service
 public class ControlDeAccesoImpl implements ControlDeAcceso {
 

@@ -32,19 +32,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-/**
- * Qué se puede hacer sin entrar y qué no.
- *
- * <p>La regla está en el verbo, no en el recurso: <b>leer es público, escribir es
- * de administrador</b>. Estos tests existen para que esa línea no se corra sola
- * —un endpoint de escritura nuevo que quede abierto, o un GET que empiece a pedir
- * token y rompa la pantalla— porque ninguna de las dos cosas se nota mirando.
- *
- * <p>Período propio para no cruzarse con las otras clases, que comparten la base
- * H2. 2050 está libre: 2029 parecía estarlo y no lo estaba —lo usa
- * MultimetricoServiceTest— y el choque sólo aparece al correr la suite entera,
- * nunca al correr esta clase sola. Es la trampa que el handoff documenta.
- */
 @SpringBootTest
 class SeguridadTest {
 
@@ -98,7 +85,6 @@ class SeguridadTest {
         return "/api/multimetrico/%s/asesores/%s".formatted(PERIODO, legajo);
     }
 
-    // ── leer es público ──────────────────────────────────────────────────────
 
     @Test
     void laTablaDelEquipoSeVeSinEntrar() throws Exception {
@@ -120,13 +106,6 @@ class SeguridadTest {
                 .andExpect(status().isOk());
     }
 
-    /**
-     * Un token de asesor no <em>reduce</em> lo que se ve.
-     *
-     * <p>Suena obvio y no lo es: mientras existió el control por fila, entrar
-     * como asesor mostraba menos que no entrar. Que hoy den lo mismo es la
-     * consecuencia de haber abierto la lectura, y este test lo deja escrito.
-     */
     @Test
     void entrarNoCambiaLoQueSeLee() throws Exception {
         mvc().perform(get(filaDe(OTRO)).param("campania", CAMPANIA).with(como(asesor(FLAVIA))))
@@ -134,7 +113,6 @@ class SeguridadTest {
                 .andExpect(jsonPath("$.legajo").value(OTRO));
     }
 
-    // ── escribir pide administrador ──────────────────────────────────────────
 
     @Test
     void cargarUnPliegoSinEntrarDa401() throws Exception {
@@ -142,8 +120,6 @@ class SeguridadTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"periodo\":\"2050-09\",\"campania\":\"X\",\"escalas\":[]}"))
                 .andExpect(status().isUnauthorized())
-                // El 401 sale con el mismo formato que el resto de la API, no con
-                // el cuerpo vacío que devuelve Spring Security por defecto.
                 .andExpect(jsonPath("$.estado").value(401))
                 .andExpect(jsonPath("$.mensaje").exists());
     }
@@ -156,7 +132,6 @@ class SeguridadTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    /** Autenticado pero sin ser administrador: 403 y no 401. */
     @Test
     void unAsesorNoCargaPliegos() throws Exception {
         mvc().perform(post("/api/pliegos")
@@ -168,8 +143,6 @@ class SeguridadTest {
 
     @Test
     void listarUsuariosNoEsPublicoAunqueSeaUnGet() throws Exception {
-        // La excepción a "todo GET es público": leer quién tiene acceso es
-        // distinto de leer el multimétrico.
         mvc().perform(get("/api/usuarios"))
                 .andExpect(status().isUnauthorized());
 
@@ -177,17 +150,7 @@ class SeguridadTest {
                 .andExpect(status().isOk());
     }
 
-    // ── el despacho de error no puede disfrazarse de 401 ─────────────────────
 
-    /**
-     * Un GET público al que le falta un parámetro devuelve 400, no 401.
-     *
-     * <p>Devolvía 401 "hace falta iniciar sesión". La excepción no tenía
-     * manejador, salía por el despacho a {@code /error}, y ese despacho volvía a
-     * pasar por la cadena de seguridad ya sin contexto. El mensaje mandaba a
-     * buscar el problema al lado exactamente equivocado: la sesión estaba bien y
-     * lo que faltaba era un {@code ?campania=}.
-     */
     @Test
     void aUnGetPublicoLeFaltaUnParametroYDice400() throws Exception {
         mvc().perform(get("/api/multimetrico/" + PERIODO))
@@ -195,7 +158,6 @@ class SeguridadTest {
                 .andExpect(jsonPath("$.mensaje", org.hamcrest.Matchers.containsString("campania")));
     }
 
-    /** Lo mismo autenticado: subir sin adjuntar archivo dice eso, no 401. */
     @Test
     void aUnPostAutenticadoLeFaltaElArchivoYDice400() throws Exception {
         mvc().perform(post("/api/importaciones").with(como(admin())))
@@ -208,7 +170,6 @@ class SeguridadTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // ── el login ─────────────────────────────────────────────────────────────
 
     @Test
     void elLoginDevuelveUnTokenQueSePuedeLeer() {
@@ -230,17 +191,9 @@ class SeguridadTest {
         mvc().perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"legajo\":\"nadie\",\"password\":\"x\"}"))
-                // 401 y no 403: llega al endpoint, lo que falla son las credenciales.
                 .andExpect(status().isUnauthorized());
     }
 
-    /**
-     * El legajo inexistente y la contraseña equivocada dan el <b>mismo</b>
-     * mensaje.
-     *
-     * <p>Distinguirlos convertiría al login en una forma de averiguar qué legajos
-     * existen, que es la mitad del trabajo de quien después prueba contraseñas.
-     */
     @Test
     void elLoginNoDiceSiFalloElLegajoOLaContrasena() {
         usuarios.crear(new UsuarioRequest("k901", "Prueba Mensaje", "unacontrasenalarga", Rol.ADMIN, null));
@@ -257,7 +210,6 @@ class SeguridadTest {
         assertThat(tokens.leer("")).isEmpty();
     }
 
-    /** Un SUPERVISOR sin equipo no vería a nadie: se rechaza al crearlo. */
     @Test
     void unSupervisorNecesitaEquipo() {
         assertThat(

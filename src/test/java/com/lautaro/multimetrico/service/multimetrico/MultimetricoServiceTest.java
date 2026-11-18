@@ -27,25 +27,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * El multimétrico armado de punta a punta, contra la base.
- *
- * <p>La base se comparte entre clases de test y un pliego cargado no se puede
- * pisar, así que <b>cada test trabaja sobre su propio período</b>.
- */
 @SpringBootTest
 class MultimetricoServiceTest {
 
-    /**
-     * Estos tests miran el cálculo, no la autorización.
-     *
-     * <p>Actúan como ADMIN para que el control de acceso no sea lo que decide si
-     * pasan: quien prueba el control es {@code SeguridadTest}, y mezclarlo acá
-     * haría que estos fallaran por dos motivos distintos.
-     *
-     * <p>El contexto se limpia al terminar porque vive en un ThreadLocal y JUnit
-     * reusa el hilo: una identidad que queda puesta se filtra al test siguiente.
-     */
     @org.junit.jupiter.api.BeforeEach
     void actuarComoAdmin() {
         com.lautaro.multimetrico.fixture.Identidades.actuarComo(
@@ -75,10 +59,6 @@ class MultimetricoServiceTest {
         medicionesDelMes.registrar(mediciones(periodo));
     }
 
-    /**
-     * El asesor sin mediciones aparece igual. Hoy, si un nombre no empalma, la
-     * fila directamente no está y nadie la extraña.
-     */
     @Test
     void armaUnaFilaPorCadaAsesorDelEquipoAunqueNoTengaMediciones() {
         YearMonth periodo = YearMonth.of(2029, 2);
@@ -109,14 +89,12 @@ class MultimetricoServiceTest {
         assertThat(deJorge.resumen().asesores()).isEqualTo(1);
         assertThat(deSilvia.alcanceMaximo()).isEqualByComparingTo("10.5");
 
-        // u100: FCR 78.2 -> 4, TMO 612 -> 1, NPS 55.4 -> 3.5
         assertThat(deSilvia.filas().getFirst().alcanceTotal()).isEqualByComparingTo("8.5");
         assertThat(deSilvia.filas().getFirst().completa()).isTrue();
         assertThat(deSilvia.resumen().completos()).isEqualTo(1);
         assertThat(deSilvia.resumen().conFaltantes()).isEqualTo(1);
     }
 
-    /** Sin líder, la operación entera: la vista que hoy no arma nadie. */
     @Test
     void sinLiderDevuelveLaOperacionEntera() {
         YearMonth periodo = YearMonth.of(2029, 4);
@@ -125,10 +103,6 @@ class MultimetricoServiceTest {
         assertThat(multimetricos.delEquipo(periodo, null, CAMPANIA).resumen().asesores()).isEqualTo(3);
     }
 
-    /**
-     * Dos fechas en una misma métrica significan que alguien quedó afuera del
-     * último archivo y sigue mostrando el número de la semana pasada.
-     */
     @Test
     void avisaCuandoElEquipoTieneMasDeUnCorteEnLaMismaMetrica() {
         YearMonth periodo = YearMonth.of(2029, 5);
@@ -145,18 +119,12 @@ class MultimetricoServiceTest {
         assertThat(multimetrico.resumen().actualizadoDesde()).isEqualTo(periodo.atDay(15));
     }
 
-    /**
-     * Lo que la planilla no puede hacer: el mismo número evaluado contra el
-     * pliego de cada mes da distinto, y el de un mes viejo se sigue pudiendo
-     * reproducir porque su pliego no se pisó.
-     */
     @Test
     void evaluaConElPliegoDelPeriodoYNoConElVigente() {
         YearMonth enero = YearMonth.of(2029, 6);
         YearMonth febrero = YearMonth.of(2029, 7);
 
         pliegos.cargar(pliego(enero));
-        // En febrero la vara sube: el mismo 78.2 deja de alcanzar la mejor banda.
         pliegos.cargar(new Pliego(febrero, CAMPANIA, List.of(
                 new Escala(Metrica.FCR, n("4"), List.of(
                         new Banda(null, n("60"), n("0")),
@@ -191,17 +159,6 @@ class MultimetricoServiceTest {
                 .hasMessageContaining("No hay padrón cargado para 2029-09");
     }
 
-    /**
-     * Un líder que no está en el padrón devolvería una tabla vacía, que se lee
-     * como "no hay datos cargados" y manda a buscar el problema al lado
-     * equivocado. El mensaje trae los líderes que sí están para que quien lo lee
-     * vea el suyo.
-     *
-     * <p>Las diferencias de puntuación o de acentos no llegan hasta acá: el
-     * padrón compara nombres normalizados, así que "Peralta, Silvia" encuentra
-     * igual a "PERALTA SILVIA". Lo que no encuentra a nadie es un nombre que
-     * efectivamente no está.
-     */
     @Test
     void unLiderQueNoEstaEnElPadronEsUnErrorYNoUnaTablaVacia() {
         YearMonth periodo = YearMonth.of(2029, 10);

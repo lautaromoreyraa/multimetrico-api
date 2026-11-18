@@ -10,17 +10,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-/**
- * Arma planillas de prueba en memoria.
- *
- * <p>Se generan en tiempo de ejecución y nunca se guardan en disco. La razón no
- * es comodidad: el {@code .gitignore} del proyecto bloquea {@code *.xlsx} para
- * que ninguna planilla de una operación real entre al repositorio, y versionar un
- * fixture binario sería abrirle la puerta justo a lo que esa regla evita. Además
- * un archivo que se lee no dice qué está probando; este constructor sí.
- *
- * <p>Todos los datos son inventados.
- */
 public final class PlanillaSintetica {
 
     private final XSSFWorkbook libro = new XSSFWorkbook();
@@ -35,7 +24,6 @@ public final class PlanillaSintetica {
         return new PlanillaSintetica(nombre);
     }
 
-    /** Una fila de texto. Sirve para encabezados y para valores mal cargados. */
     public PlanillaSintetica fila(String... celdas) {
         Row fila = hoja.createRow(proximaFila++);
         for (int c = 0; c < celdas.length; c++) {
@@ -46,7 +34,6 @@ public final class PlanillaSintetica {
         return this;
     }
 
-    /** Asesor, valor numérico y líder: la fila que se espera importar. */
     public PlanillaSintetica filaConValor(String asesor, double valor, String lider) {
         Row fila = hoja.createRow(proximaFila++);
         fila.createCell(0).setCellValue(asesor);
@@ -57,11 +44,6 @@ public final class PlanillaSintetica {
         return this;
     }
 
-    /**
-     * Una celda con formato de porcentaje: Excel guarda {@code 0.805} y muestra
-     * {@code 80,5%}. Es el caso que, sin detectarlo, importa el archivo cien veces
-     * más chico.
-     */
     public PlanillaSintetica filaConPorcentaje(String asesor, double fraccion, String lider) {
         Row fila = hoja.createRow(proximaFila++);
         fila.createCell(0).setCellValue(asesor);
@@ -78,7 +60,6 @@ public final class PlanillaSintetica {
         return this;
     }
 
-    /** Una fila completamente en blanco, como las que arrastran las planillas al final. */
     public PlanillaSintetica filaVacia() {
         hoja.createRow(proximaFila++);
         return this;
@@ -94,7 +75,6 @@ public final class PlanillaSintetica {
         }
     }
 
-    /** La planilla típica: encabezados en la fila 1 y datos debajo. */
     public static byte[] deMetrica(String nombreDeHoja, List<String> encabezados) {
         return hoja(nombreDeHoja).fila(encabezados.toArray(String[]::new)).bytes();
     }

@@ -16,23 +16,6 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * Lee el token del {@code Authorization} y deja al usuario en el contexto.
- *
- * <h2>No rechaza nada</h2>
- *
- * <p>Si no hay token, o el token no sirve, este filtro <b>sigue de largo</b> sin
- * autenticar a nadie. Quien devuelve el 401 es la cadena de seguridad, más
- * adelante, cuando descubre que la request llegó anónima a un endpoint que pide
- * autenticación.
- *
- * <p>Puede parecer un rodeo pero es lo que hace que los endpoints públicos —el
- * login— sigan funcionando con un token vencido en el navegador, y que el 401 lo
- * emita un solo lugar en vez de dos.
- *
- * <p>{@link OncePerRequestFilter} y no un filtro común: sin eso, un {@code
- * forward} interno vuelve a pasar por acá y el trabajo se hace dos veces.
- */
 @Component
 public class FiltroDeAutenticacionJwt extends OncePerRequestFilter {
 
@@ -51,8 +34,6 @@ public class FiltroDeAutenticacionJwt extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain chain) throws ServletException, IOException {
 
-        // Si ya hay alguien autenticado no se lo pisa. Importa para los tests,
-        // que inyectan la autenticación directo sin pasar por un token.
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             tokenDe(request).flatMap(tokens::leer).ifPresent(credencial -> autenticar(credencial, request));
         }
@@ -69,12 +50,6 @@ public class FiltroDeAutenticacionJwt extends OncePerRequestFilter {
         return token.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(token);
     }
 
-    /**
-     * El {@link Credencial} va como <em>principal</em>, no como un texto.
-     *
-     * <p>Así {@code ControlDeAcceso} lo saca del contexto sin volver a parsear
-     * nada ni consultar la base: el rol y el equipo ya vinieron en el token.
-     */
     private static void autenticar(Credencial credencial, HttpServletRequest request) {
         var autenticacion = new UsernamePasswordAuthenticationToken(
                 credencial,

@@ -16,30 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * El servicio de mediciones contra la base.
- *
- * <p>Antes corría contra un doble en memoria. Con el repositorio siendo una
- * interfaz de Spring Data eso ya no se puede escribir a mano, y tampoco
- * convendría: <b>el orden de carga es parte del contrato</b> —el desempate entre
- * dos mediciones del mismo corte lo gana la última— y ese orden lo produce el
- * {@code ORDER BY id} de la consulta. Un doble en memoria lo daba por sentado en
- * vez de verificarlo.
- *
- * <p>Cada test usa su propio período, como el resto de la suite: el contexto de
- * Spring y la base se comparten entre clases, y las mediciones se acumulan
- * porque nunca se pisan.
- */
 @SpringBootTest
 class MedicionServiceTest {
 
     @Autowired
     private MedicionService servicio;
 
-    /**
-     * El defecto que este módulo corrige: en la planilla la carga del lunes pisa
-     * la del lunes anterior y el número viejo deja de existir.
-     */
     @Test
     void cadaCargaSemanalAgregaEnVezDePisarLaAnterior() {
         YearMonth periodo = YearMonth.of(2040, 1);
@@ -85,7 +67,6 @@ class MedicionServiceTest {
         assertThat(servicio.historia(periodo, "s100", Metrica.FCR)).hasSize(1);
     }
 
-    /** Los archivos de origen escriben el mismo legajo de las dos formas. */
     @Test
     void elLegajoSeBuscaSinDistinguirMayusculas() {
         YearMonth periodo = YearMonth.of(2040, 4);
@@ -105,16 +86,6 @@ class MedicionServiceTest {
         assertThat(servicio.historia(YearMonth.of(2040, 6), null, null)).isEmpty();
     }
 
-    /**
-     * Los valores se comparan con {@code compareTo} y no con {@code equals}.
-     *
-     * <p>No es un detalle de estilo del test: {@code BigDecimal.equals} mira la
-     * escala, y un {@code 61.0} vuelve de la base como {@code 61} porque el
-     * accesor le saca los ceros de más —ver {@code DecimalUtil}, que existe para
-     * que los mensajes digan "sobran 12" y no "sobran 12.000000"—. Comparar por
-     * igualdad acá era afirmar algo sobre la escala de la columna, que es
-     * justamente lo que a nadie le importa.
-     */
     @Test
     void agrupaLasVigentesDeTodaLaOperacionEnUnaSolaPasada() {
         YearMonth periodo = YearMonth.of(2040, 7);
@@ -131,13 +102,6 @@ class MedicionServiceTest {
         assertThat(vigentes.get("S200").valores().get(Metrica.FCR)).isEqualByComparingTo("61.0");
     }
 
-    /**
-     * Marcar la vigente por id y no por valor.
-     *
-     * <p>Dos cargas del mismo corte con el mismo número tienen todos los campos
-     * iguales: comparándolas por valor, las dos quedarían marcadas como vigentes
-     * y la pantalla mostraría dos filas subrayadas para una sola métrica.
-     */
     @Test
     void marcaComoVigenteUnaSolaFilaPorAsesorYMetrica() {
         YearMonth periodo = YearMonth.of(2040, 8);

@@ -23,18 +23,9 @@ import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfig
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-/**
- * El multimétrico por HTTP: la respuesta que pinta el frontend.
- *
- * <p>Es el test más valioso de la reestructuración. La fila de un asesor pasa por
- * todas las capas nuevas —repositorio con {@code @EntityGraph}, servicio que
- * calcula, mapper que redacta— y todo eso tiene que salir por el mismo JSON que
- * antes.
- */
 @SpringBootTest
 class MultimetricoControllerTest {
 
-    /** Período propio de esta clase, para no cruzarse con los otros tests. */
     private static final YearMonth PERIODO = YearMonth.of(2028, 3);
 
     @Autowired
@@ -55,9 +46,6 @@ class MultimetricoControllerTest {
 
     private MockMvc mvc() {
         if (mockMvc == null) {
-            // springSecurity() mete la cadena de seguridad real en el MockMvc. Sin
-            // esto los tests pasan por al lado de toda la autorizacion: un GET sin
-            // token devolveria 200 y nadie se enteraria de que la regla no anda.
             mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
                     .apply(SecurityMockMvcConfigurers.springSecurity())
                     .build();
@@ -65,11 +53,6 @@ class MultimetricoControllerTest {
         return mockMvc;
     }
 
-    /**
-     * El escenario se carga una sola vez: el pliego no se puede pisar y las
-     * mediciones se acumulan, así que cargarlo por test daría 409 y duplicaría la
-     * historia.
-     */
     @BeforeEach
     void cargarEscenario() {
         if (cargado) {
@@ -96,10 +79,6 @@ class MultimetricoControllerTest {
                 .andExpect(jsonPath("$.filas[1].faltantes[0]").value("NPS"));
     }
 
-    /**
-     * Lo que la planilla pierde: cada métrica sale con la fecha del archivo del
-     * que salió, no con una sola fecha para toda la fila.
-     */
     @Test
     void cadaMetricaSaleConSuPropioActualizadoAl() throws Exception {
         mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA).with(como(admin())))
@@ -110,7 +89,6 @@ class MultimetricoControllerTest {
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='NPS')].actualizadoAl").value("2028-03-22"));
     }
 
-    /** El único dato accionable de la tabla: qué hacer para sumar más. */
     @Test
     void cadaMetricaDiceCuantoLeFaltaParaElTramoDeArriba() throws Exception {
         mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA).with(como(admin())))
@@ -120,20 +98,9 @@ class MultimetricoControllerTest {
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='TMO')].tramoDeArriba.condicion").value("BAJAR_DE"))
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='TMO')].tramoDeArriba.detalle",
                         org.hamcrest.Matchers.contains("hay que quedar por debajo de 600 —sobran 12— y sumar 2")))
-                // FCR ya está en la mejor banda: no hay tramo de arriba que mostrar.
                 .andExpect(jsonPath("$.metricas[?(@.metrica=='FCR')].tramoDeArriba[0]").doesNotExist());
     }
 
-    /**
-     * Cada celda dice en qué se mide, y no lo tiene que adivinar la pantalla.
-     *
-     * <p>El enum {@code Metrica} sabe desde siempre que el TMO son segundos y
-     * las otras cuatro porcentaje, pero la respuesta no lo mandaba: el frontend
-     * mantenía su propio mapa de métrica a unidad, que es la misma decisión
-     * escrita en dos lados. Un 655 sin unidad no se puede mostrar —¿segundos o
-     * por ciento?—, así que viaja pegado al valor por la misma razón que el
-     * {@code actualizadoAl}.
-     */
     @Test
     void cadaMetricaSaleConSuUnidad() throws Exception {
         mvc().perform(get("/api/multimetrico/2028-03/asesores/u100").param("campania", CAMPANIA).with(como(admin())))

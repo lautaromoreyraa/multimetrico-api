@@ -35,11 +35,6 @@ public class PliegoController {
         this.mapper = mapper;
     }
 
-    /**
-     * Revisa un pliego sin guardarlo. Devuelve 200 con la lista de problemas
-     * —vacía si está sano—, porque acá "tiene errores" es la respuesta esperada
-     * y no una falla de la petición.
-     */
     @PostMapping("/revision")
     public List<Violacion> revisar(@Valid @RequestBody PliegoRequest request) {
         return servicio.revisar(mapper.aEntidad(request));
@@ -63,12 +58,6 @@ public class PliegoController {
         return mapper.aResponse(servicio.buscar(periodo, campania));
     }
 
-    /**
-     * Evalúa mediciones contra el pliego de ese período.
-     *
-     * <p>El período va en la URL y no se toma "el vigente": un cálculo tiene que
-     * poder repetirse dentro de seis meses y dar lo mismo.
-     */
     @PostMapping("/{periodo}/evaluacion")
     public EvaluacionResponse evaluar(
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,

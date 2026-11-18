@@ -6,13 +6,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 
-/**
- * Mediciones armadas a mano para los tests.
- *
- * <p><b>Todo es inventado</b>: los legajos, los valores y las fechas. Tienen la
- * forma de los reales —un corte por semana, valores que se mueven de a poco—
- * pero no son los de ninguna operación.
- */
 public final class MedicionesDeEjemplo {
 
     private MedicionesDeEjemplo() {

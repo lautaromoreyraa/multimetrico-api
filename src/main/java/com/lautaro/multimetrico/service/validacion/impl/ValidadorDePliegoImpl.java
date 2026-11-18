@@ -12,14 +12,6 @@ import java.util.EnumSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-/**
- * El validador de pliegos.
- *
- * <p>Junta <b>todos</b> los problemas antes de devolver. Cargar el pliego es el
- * momento en que conviene fallar: después ya hay números calculados con reglas
- * rotas. Y quien lo carga tiene que poder arreglarlo de una pasada, no descubrir
- * el siguiente error recién después de corregir el anterior.
- */
 @Service
 public class ValidadorDePliegoImpl implements ValidadorDePliego {
 
@@ -59,13 +51,6 @@ public class ValidadorDePliegoImpl implements ValidadorDePliego {
         validarPeso(escala, violaciones);
     }
 
-    /**
-     * La escala tiene que cubrir de menos infinito a más infinito.
-     *
-     * <p>Sin extremo abierto arriba, un FCR perfecto de 100% se cae de la tabla
-     * si la mejor banda termina justo en 100. Sin extremo abierto abajo, un TMO
-     * de 0 —que existe cuando todavía no hay llamadas cargadas— tampoco entra.
-     */
     private void validarExtremosAbiertos(List<Banda> bandas, Metrica metrica, List<Violacion> violaciones) {
         if (!bandas.getFirst().abiertaAbajo()) {
             violaciones.add(new Violacion(metrica, TipoDeViolacion.SIN_EXTREMO_ABIERTO,
@@ -79,18 +64,12 @@ public class ValidadorDePliegoImpl implements ValidadorDePliego {
         }
     }
 
-    /**
-     * Entre dos bandas consecutivas, el techo de una tiene que ser el piso de la
-     * siguiente. Si sobra, hay hueco; si falta, se superponen.
-     */
     private void validarContinuidad(List<Banda> bandas, Metrica metrica, List<Violacion> violaciones) {
         for (int i = 0; i < bandas.size() - 1; i++) {
             Banda actual = bandas.get(i);
             Banda siguiente = bandas.get(i + 1);
 
             if (actual.hasta() == null || siguiente.desde() == null) {
-                // Un extremo abierto en el medio de la tabla: ya se reporta como
-                // superposición contra todo lo que tenga al lado.
                 violaciones.add(new Violacion(metrica, TipoDeViolacion.SUPERPOSICION,
                         "la banda %s no tiene límite en el medio de la tabla y se pisa con %s"
                                 .formatted(actual.rango(), siguiente.rango())));
@@ -111,11 +90,6 @@ public class ValidadorDePliegoImpl implements ValidadorDePliego {
         }
     }
 
-    /**
-     * El peso declarado tiene que ser lo que paga la mejor banda. Si no coinciden,
-     * o el peso está mal o la tabla no llega al techo que dice el pliego, y en
-     * cualquiera de los dos casos el alcance máximo que se publica es mentira.
-     */
     private void validarPeso(Escala escala, List<Violacion> violaciones) {
         if (escala.peso().compareTo(escala.mejorResultado()) != 0) {
             violaciones.add(new Violacion(escala.metrica(), TipoDeViolacion.PESO_NO_COINCIDE,

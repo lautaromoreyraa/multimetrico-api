@@ -4,30 +4,6 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 
-/**
- * Serializa las listas del informe de una importación a una columna de texto.
- *
- * <h2>Por qué no son cuatro tablas</h2>
- *
- * <p>Rechazos, pendientes, discrepancias y desajustes son las listas de un
- * <b>reporte</b>: se escriben una vez, se leen siempre enteras y siempre de una
- * sola importación. Nadie pregunta "todos los rechazos por valor no numérico del
- * año", y si algún día hiciera falta, sería un reporte nuevo y no una consulta
- * sobre estas filas.
- *
- * <p>Desarmarlas en tablas costaría cuatro tablas, cuatro claves foráneas y
- * cuatro joins para reconstruir algo que se muestra junto, y a cambio congelaría
- * la forma del informe: cada motivo de rechazo nuevo —y van a aparecer, porque el
- * formato de los archivos de origen cambia— sería una migración. Lo que sí son
- * columnas de verdad es lo que se consulta o se cuenta: estado, período, métrica
- * y los dos contadores.
- *
- * <p>El precio, dicho claro: <b>estas listas no se pueden consultar por SQL</b>.
- * Es un precio que se paga a sabiendas porque hoy nada las consulta.
- *
- * <p>Un {@link ObjectMapper} propio y no el de Spring MVC: lo que se guarda en la
- * base no puede cambiar de forma porque alguien ajustó cómo se ve la API.
- */
 public final class JsonUtil {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
