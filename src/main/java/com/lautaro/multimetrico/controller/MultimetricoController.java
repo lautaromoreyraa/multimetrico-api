@@ -2,7 +2,6 @@ package com.lautaro.multimetrico.controller;
 
 import com.lautaro.multimetrico.dto.multimetrico.FilaResponse;
 import com.lautaro.multimetrico.dto.multimetrico.MultimetricoResponse;
-import com.lautaro.multimetrico.mapper.MultimetricoMapper;
 import com.lautaro.multimetrico.service.multimetrico.MultimetricoService;
 import com.lautaro.multimetrico.util.PeriodoUtil;
 import java.time.YearMonth;
@@ -18,11 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class MultimetricoController {
 
     private final MultimetricoService servicio;
-    private final MultimetricoMapper mapper;
 
-    public MultimetricoController(MultimetricoService servicio, MultimetricoMapper mapper) {
+    public MultimetricoController(MultimetricoService servicio) {
         this.servicio = servicio;
-        this.mapper = mapper;
     }
 
     @GetMapping("/{periodo}")
@@ -30,7 +27,7 @@ public class MultimetricoController {
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
             @RequestParam(required = false) String lider,
             @RequestParam String campania) {
-        return mapper.aResponse(servicio.delEquipo(periodo, lider, campania));
+        return servicio.tablaDelEquipo(periodo, lider, campania);
     }
 
     @GetMapping("/{periodo}/asesores/{legajo}")
@@ -38,6 +35,6 @@ public class MultimetricoController {
             @PathVariable @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
             @PathVariable String legajo,
             @RequestParam String campania) {
-        return mapper.aResponse(servicio.deUnAsesor(periodo, legajo, campania));
+        return servicio.filaDeUnAsesor(periodo, legajo, campania);
     }
 }

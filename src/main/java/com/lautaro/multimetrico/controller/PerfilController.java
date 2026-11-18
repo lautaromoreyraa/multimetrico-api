@@ -3,7 +3,6 @@ package com.lautaro.multimetrico.controller;
 import com.lautaro.multimetrico.dto.perfil.InspeccionResponse;
 import com.lautaro.multimetrico.dto.perfil.PerfilRequest;
 import com.lautaro.multimetrico.dto.perfil.PerfilResponse;
-import com.lautaro.multimetrico.mapper.PerfilMapper;
 import com.lautaro.multimetrico.service.importacion.ImportacionService;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -23,22 +22,19 @@ import org.springframework.web.multipart.MultipartFile;
 public class PerfilController {
 
     private final ImportacionService servicio;
-    private final PerfilMapper mapper;
 
-    public PerfilController(ImportacionService servicio, PerfilMapper mapper) {
+    public PerfilController(ImportacionService servicio) {
         this.servicio = servicio;
-        this.mapper = mapper;
     }
 
     @PostMapping
     public ResponseEntity<PerfilResponse> definir(@Valid @RequestBody PerfilRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(mapper.aResponse(servicio.definirPerfil(mapper.aEntidad(request))));
+        return ResponseEntity.status(HttpStatus.CREATED).body(servicio.definirPerfil(request));
     }
 
     @GetMapping
     public List<PerfilResponse> perfiles() {
-        return mapper.aResponses(servicio.perfiles());
+        return servicio.perfilesDefinidos();
     }
 
     @PostMapping("/inspeccion")
@@ -47,10 +43,6 @@ public class PerfilController {
             @RequestParam(required = false) String hoja,
             @RequestParam(defaultValue = "1") int filaEncabezados) throws IOException {
 
-        byte[] bytes = archivo.getBytes();
-        return mapper.aInspeccion(
-                servicio.hojasDe(bytes),
-                filaEncabezados,
-                servicio.inspeccionar(bytes, hoja, filaEncabezados));
+        return servicio.inspeccionarPlanilla(archivo.getBytes(), hoja, filaEncabezados);
     }
 }

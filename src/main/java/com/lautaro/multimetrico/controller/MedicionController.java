@@ -1,16 +1,13 @@
 package com.lautaro.multimetrico.controller;
 
-import com.lautaro.multimetrico.domain.Medicion;
 import com.lautaro.multimetrico.dto.medicion.AltaResponse;
 import com.lautaro.multimetrico.dto.medicion.HistoriaResponse;
 import com.lautaro.multimetrico.dto.medicion.MedicionesRequest;
 import com.lautaro.multimetrico.enumeration.Metrica;
-import com.lautaro.multimetrico.mapper.MedicionMapper;
 import com.lautaro.multimetrico.service.medicion.MedicionService;
 import com.lautaro.multimetrico.util.PeriodoUtil;
 import jakarta.validation.Valid;
 import java.time.YearMonth;
-import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,18 +24,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class MedicionController {
 
     private final MedicionService servicio;
-    private final MedicionMapper mapper;
 
-    public MedicionController(MedicionService servicio, MedicionMapper mapper) {
+    public MedicionController(MedicionService servicio) {
         this.servicio = servicio;
-        this.mapper = mapper;
     }
 
     @PostMapping
     public ResponseEntity<AltaResponse> registrar(@Valid @RequestBody MedicionesRequest request) {
-        List<Medicion> registradas = servicio.registrar(mapper.aEntidades(request));
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(mapper.aAlta(request.periodo(), registradas));
+        return ResponseEntity.status(HttpStatus.CREATED).body(servicio.registrar(request));
     }
 
     @GetMapping("/{periodo}")
@@ -47,7 +40,6 @@ public class MedicionController {
             @RequestParam(required = false) String legajo,
             @RequestParam(required = false) Metrica metrica) {
 
-        List<Medicion> historia = servicio.historia(periodo, legajo, metrica);
-        return mapper.aHistoria(periodo, legajo, metrica, historia, servicio.vigentesEn(historia));
+        return servicio.historiaDelPeriodo(periodo, legajo, metrica);
     }
 }

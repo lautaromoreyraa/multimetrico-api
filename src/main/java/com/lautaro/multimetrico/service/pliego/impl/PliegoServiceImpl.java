@@ -5,11 +5,16 @@ import com.lautaro.multimetrico.domain.Escala;
 import com.lautaro.multimetrico.domain.Pliego;
 import com.lautaro.multimetrico.dto.evaluacion.Alcance;
 import com.lautaro.multimetrico.dto.evaluacion.Evaluacion;
+import com.lautaro.multimetrico.dto.evaluacion.EvaluacionRequest;
+import com.lautaro.multimetrico.dto.evaluacion.EvaluacionResponse;
+import com.lautaro.multimetrico.dto.pliego.PliegoRequest;
+import com.lautaro.multimetrico.dto.pliego.PliegoResponse;
 import com.lautaro.multimetrico.dto.pliego.Violacion;
 import com.lautaro.multimetrico.enumeration.Metrica;
 import com.lautaro.multimetrico.exception.PliegoInvalidoException;
 import com.lautaro.multimetrico.exception.PliegoYaCargadoException;
 import com.lautaro.multimetrico.exception.RecursoNoEncontradoException;
+import com.lautaro.multimetrico.mapper.PliegoMapper;
 import com.lautaro.multimetrico.repository.PliegoRepository;
 import com.lautaro.multimetrico.service.pliego.PliegoService;
 import com.lautaro.multimetrico.service.validacion.ValidadorDePliego;
@@ -27,10 +32,12 @@ public class PliegoServiceImpl implements PliegoService {
 
     private final PliegoRepository repositorio;
     private final ValidadorDePliego validador;
+    private final PliegoMapper mapper;
 
-    public PliegoServiceImpl(PliegoRepository repositorio, ValidadorDePliego validador) {
+    public PliegoServiceImpl(PliegoRepository repositorio, ValidadorDePliego validador, PliegoMapper mapper) {
         this.repositorio = repositorio;
         this.validador = validador;
+        this.mapper = mapper;
     }
 
     @Override
@@ -104,5 +111,34 @@ public class PliegoServiceImpl implements PliegoService {
 
     private static Alcance alcance(Metrica metrica, BigDecimal valor, Banda banda) {
         return new Alcance(metrica, valor, banda.rango(), banda.resultado());
+    }
+
+    @Override
+    public List<Violacion> revisar(PliegoRequest request) {
+        return revisar(mapper.aEntidad(request));
+    }
+
+    @Override
+    @Transactional
+    public PliegoResponse cargar(PliegoRequest request) {
+        return mapper.aResponse(cargar(mapper.aEntidad(request)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PliegoResponse> pliegosCargados() {
+        return mapper.aResponses(listar());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PliegoResponse verPliego(YearMonth periodo, String campania) {
+        return mapper.aResponse(buscar(periodo, campania));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EvaluacionResponse evaluar(YearMonth periodo, String campania, EvaluacionRequest request) {
+        return mapper.aResponse(evaluar(periodo, campania, request.mediciones()));
     }
 }

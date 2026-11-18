@@ -1,7 +1,6 @@
 package com.lautaro.multimetrico.controller;
 
 import com.lautaro.multimetrico.dto.importacion.ImportacionResponse;
-import com.lautaro.multimetrico.mapper.ImportacionMapper;
 import com.lautaro.multimetrico.service.importacion.ImportacionService;
 import com.lautaro.multimetrico.util.PeriodoUtil;
 import java.io.IOException;
@@ -23,11 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImportacionController {
 
     private final ImportacionService servicio;
-    private final ImportacionMapper mapper;
 
-    public ImportacionController(ImportacionService servicio, ImportacionMapper mapper) {
+    public ImportacionController(ImportacionService servicio) {
         this.servicio = servicio;
-        this.mapper = mapper;
     }
 
     @PostMapping
@@ -37,18 +34,17 @@ public class ImportacionController {
             @RequestParam @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate corte) throws IOException {
 
-        var recibida = servicio.recibir(perfil, periodo, corte, archivo.getBytes());
-        return ResponseEntity.accepted().body(mapper.aResponse(recibida));
+        return ResponseEntity.accepted().body(servicio.importar(perfil, periodo, corte, archivo.getBytes()));
     }
 
     @GetMapping("/{id}")
     public ImportacionResponse ver(@PathVariable String id) {
-        return mapper.aResponse(servicio.buscar(id));
+        return servicio.ver(id);
     }
 
     @GetMapping
     public List<ImportacionResponse> historial() {
-        return servicio.historial().stream().map(mapper::aResponse).toList();
+        return servicio.importaciones();
     }
 
     @PostMapping("/{id}/pendientes/{fila}")
@@ -56,6 +52,6 @@ public class ImportacionController {
             @PathVariable String id,
             @PathVariable int fila,
             @RequestParam String legajo) {
-        return mapper.aResponse(servicio.resolverPendiente(id, fila, legajo));
+        return servicio.asignarPendiente(id, fila, legajo);
     }
 }
