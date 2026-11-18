@@ -1,0 +1,4 @@
+#
+#Wed Nov 18 01:31:14 ART 2026
+no\ classes\ that\ reside\ in\ a\ package\ 'com.lautaro.multimetrico.controller..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['com.lautaro.multimetrico.repository..',\ 'com.lautaro.multimetrico.domain..',\ 'com.lautaro.multimetrico.mapper..'],\ because\ el\ controller\ s\u00F3lo\ recibe,\ delega\ en\ un\ service\ y\ devuelve\:\ si\ toca\ entidades\ o\ repositorios,\ la\ l\u00F3gica\ de\ negocio\ se\ escapa\ a\ la\ capa\ HTTP=0aeceef6-e331-43d0-a6ed-e8d8149fa7d5
+slices\ matching\ 'com.lautaro.multimetrico.(*)..'\ should\ be\ free\ of\ cycles,\ because\ un\ ciclo\ entre\ capas\ deja\ de\ tener\ un\ arriba\ y\ un\ abajo,\ y\ cualquier\ cambio\ arrastra\ a\ las\ dos=817afe63-fcab-45fb-854e-6dccda92745a
