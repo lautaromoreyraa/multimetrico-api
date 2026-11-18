@@ -1,9 +1,13 @@
 package com.lautaro.multimetrico.service.medicion.impl;
 
 import com.lautaro.multimetrico.domain.Medicion;
+import com.lautaro.multimetrico.dto.medicion.AltaResponse;
+import com.lautaro.multimetrico.dto.medicion.HistoriaResponse;
 import com.lautaro.multimetrico.dto.medicion.MedicionVigente;
+import com.lautaro.multimetrico.dto.medicion.MedicionesRequest;
 import com.lautaro.multimetrico.dto.medicion.MedicionesVigentes;
 import com.lautaro.multimetrico.enumeration.Metrica;
+import com.lautaro.multimetrico.mapper.MedicionMapper;
 import com.lautaro.multimetrico.repository.MedicionRepository;
 import com.lautaro.multimetrico.service.medicion.MedicionService;
 import java.time.YearMonth;
@@ -21,9 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class MedicionServiceImpl implements MedicionService {
 
     private final MedicionRepository repositorio;
+    private final MedicionMapper mapper;
 
-    public MedicionServiceImpl(MedicionRepository repositorio) {
+    public MedicionServiceImpl(MedicionRepository repositorio, MedicionMapper mapper) {
         this.repositorio = repositorio;
+        this.mapper = mapper;
     }
 
     @Override
@@ -96,5 +102,18 @@ public class MedicionServiceImpl implements MedicionService {
                     .add(medicion);
         }
         return agrupadas;
+    }
+
+    @Override
+    @Transactional
+    public AltaResponse registrar(MedicionesRequest request) {
+        return mapper.aAlta(request.periodo(), registrar(mapper.aEntidades(request)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HistoriaResponse historiaDelPeriodo(YearMonth periodo, String legajo, Metrica metrica) {
+        List<Medicion> historia = historia(periodo, legajo, metrica);
+        return mapper.aHistoria(periodo, legajo, metrica, historia, vigentesEn(historia));
     }
 }

@@ -7,7 +7,6 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.library.freeze.FreezingArchRule;
 
 @AnalyzeClasses(packages = "com.lautaro.multimetrico", importOptions = ImportOption.DoNotIncludeTests.class)
 class ReglasDeCapasTest {
@@ -15,12 +14,12 @@ class ReglasDeCapasTest {
     private static final String BASE = "com.lautaro.multimetrico";
 
     @ArchTest
-    static final ArchRule elControllerSoloHablaConServices = FreezingArchRule.freeze(noClasses()
+    static final ArchRule elControllerSoloHablaConServices = noClasses()
             .that().resideInAPackage(BASE + ".controller..")
             .should().dependOnClassesThat().resideInAnyPackage(BASE + ".repository..", BASE + ".domain..", BASE + ".mapper..")
             .because("el controller sólo recibe, delega en un service y devuelve: "
                     + "si toca entidades o repositorios, la lógica de negocio se escapa a la capa HTTP")
-            .allowEmptyShould(true));
+            .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule elDominioNoConoceLasCapasDeArriba = noClasses()

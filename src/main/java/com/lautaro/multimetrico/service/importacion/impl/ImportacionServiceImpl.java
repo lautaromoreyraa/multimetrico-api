@@ -7,8 +7,12 @@ import com.lautaro.multimetrico.domain.PerfilDeImportacion;
 import com.lautaro.multimetrico.dto.importacion.DiscrepanciaDeLider;
 import com.lautaro.multimetrico.dto.importacion.FilaPendiente;
 import com.lautaro.multimetrico.dto.importacion.FilaRechazada;
+import com.lautaro.multimetrico.dto.importacion.ImportacionResponse;
 import com.lautaro.multimetrico.dto.importacion.Informe;
 import com.lautaro.multimetrico.dto.padron.AsesorResponse;
+import com.lautaro.multimetrico.dto.perfil.InspeccionResponse;
+import com.lautaro.multimetrico.dto.perfil.PerfilRequest;
+import com.lautaro.multimetrico.dto.perfil.PerfilResponse;
 import com.lautaro.multimetrico.dto.planilla.FilaLeida;
 import com.lautaro.multimetrico.dto.resolucion.Coincidencia;
 import com.lautaro.multimetrico.dto.resolucion.Pendiente;
@@ -16,6 +20,7 @@ import com.lautaro.multimetrico.dto.resolucion.Resolucion;
 import com.lautaro.multimetrico.enumeration.MotivoDeRechazo;
 import com.lautaro.multimetrico.exception.RecursoNoEncontradoException;
 import com.lautaro.multimetrico.mapper.ImportacionMapper;
+import com.lautaro.multimetrico.mapper.PerfilMapper;
 import com.lautaro.multimetrico.repository.ImportacionRepository;
 import com.lautaro.multimetrico.repository.PerfilRepository;
 import com.lautaro.multimetrico.service.importacion.ImportacionService;
@@ -47,10 +52,11 @@ public class ImportacionServiceImpl implements ImportacionService {
     private final PadronService padrones;
     private final MedicionService mediciones;
     private final ImportacionMapper mapper;
+    private final PerfilMapper perfilMapper;
 
     public ImportacionServiceImpl(LectorDePlanilla lector, ProcesadorDeImportaciones procesador,
             PerfilRepository perfiles, ImportacionRepository importaciones, PadronService padrones,
-            MedicionService mediciones, ImportacionMapper mapper) {
+            MedicionService mediciones, ImportacionMapper mapper, PerfilMapper perfilMapper) {
 
         this.lector = lector;
         this.procesador = procesador;
@@ -59,6 +65,7 @@ public class ImportacionServiceImpl implements ImportacionService {
         this.padrones = padrones;
         this.mediciones = mediciones;
         this.mapper = mapper;
+        this.perfilMapper = perfilMapper;
     }
 
     @Override
@@ -215,5 +222,46 @@ public class ImportacionServiceImpl implements ImportacionService {
             discrepancias.add(new DiscrepanciaDeLider(fila.numeroDeFila(), fila.textoAsesor(),
                     asesor.legajo(), fila.textoLider(), asesor.lider()));
         }
+    }
+
+    @Override
+    public ImportacionResponse importar(String nombrePerfil, YearMonth periodo, LocalDate corte, byte[] archivo) {
+        return mapper.aResponse(recibir(nombrePerfil, periodo, corte, archivo));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ImportacionResponse ver(String id) {
+        return mapper.aResponse(buscar(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ImportacionResponse> importaciones() {
+        return historial().stream().map(mapper::aResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public ImportacionResponse asignarPendiente(String id, int numeroDeFila, String legajo) {
+        return mapper.aResponse(resolverPendiente(id, numeroDeFila, legajo));
+    }
+
+    @Override
+    @Transactional
+    public PerfilResponse definirPerfil(PerfilRequest request) {
+        return perfilMapper.aResponse(definirPerfil(perfilMapper.aEntidad(request)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PerfilResponse> perfilesDefinidos() {
+        return perfilMapper.aResponses(perfiles());
+    }
+
+    @Override
+    public InspeccionResponse inspeccionarPlanilla(byte[] archivo, String hoja, int filaEncabezados) {
+        List<String> hojas = hojasDe(archivo);
+        return perfilMapper.aInspeccion(hojas, filaEncabezados, inspeccionar(archivo, hoja, filaEncabezados));
     }
 }

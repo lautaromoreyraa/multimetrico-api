@@ -10,13 +10,16 @@ import com.lautaro.multimetrico.dto.evaluacion.Evaluacion;
 import com.lautaro.multimetrico.dto.medicion.MedicionesVigentes;
 import com.lautaro.multimetrico.dto.multimetrico.CeldaDeMultimetrico;
 import com.lautaro.multimetrico.dto.multimetrico.FilaDeMultimetrico;
+import com.lautaro.multimetrico.dto.multimetrico.FilaResponse;
 import com.lautaro.multimetrico.dto.multimetrico.Multimetrico;
+import com.lautaro.multimetrico.dto.multimetrico.MultimetricoResponse;
 import com.lautaro.multimetrico.dto.multimetrico.ResumenDeEquipo;
 import com.lautaro.multimetrico.dto.multimetrico.TramoDeArriba;
 import com.lautaro.multimetrico.enumeration.CondicionDeTramo;
 import com.lautaro.multimetrico.enumeration.Metrica;
 import com.lautaro.multimetrico.enumeration.Sentido;
 import com.lautaro.multimetrico.exception.RecursoNoEncontradoException;
+import com.lautaro.multimetrico.mapper.MultimetricoMapper;
 import com.lautaro.multimetrico.mapper.PadronMapper;
 import com.lautaro.multimetrico.service.medicion.MedicionService;
 import com.lautaro.multimetrico.service.multimetrico.MultimetricoService;
@@ -44,13 +47,15 @@ public class MultimetricoServiceImpl implements MultimetricoService {
     private final PadronService padrones;
     private final MedicionService mediciones;
     private final PadronMapper padronMapper;
+    private final MultimetricoMapper mapper;
 
     public MultimetricoServiceImpl(PliegoService pliegos, PadronService padrones,
-            MedicionService mediciones, PadronMapper padronMapper) {
+            MedicionService mediciones, PadronMapper padronMapper, MultimetricoMapper mapper) {
         this.pliegos = pliegos;
         this.padrones = padrones;
         this.mediciones = mediciones;
         this.padronMapper = padronMapper;
+        this.mapper = mapper;
     }
 
     @Override
@@ -175,5 +180,17 @@ public class MultimetricoServiceImpl implements MultimetricoService {
                         .min(Comparator.naturalOrder())
                         .orElse(null),
                 cortes);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MultimetricoResponse tablaDelEquipo(YearMonth periodo, String lider, String campania) {
+        return mapper.aResponse(delEquipo(periodo, lider, campania));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FilaResponse filaDeUnAsesor(YearMonth periodo, String legajo, String campania) {
+        return mapper.aResponse(deUnAsesor(periodo, legajo, campania));
     }
 }

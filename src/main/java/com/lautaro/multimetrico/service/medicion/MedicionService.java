@@ -1,6 +1,9 @@
 package com.lautaro.multimetrico.service.medicion;
 
 import com.lautaro.multimetrico.domain.Medicion;
+import com.lautaro.multimetrico.dto.medicion.AltaResponse;
+import com.lautaro.multimetrico.dto.medicion.HistoriaResponse;
+import com.lautaro.multimetrico.dto.medicion.MedicionesRequest;
 import com.lautaro.multimetrico.dto.medicion.MedicionesVigentes;
 import com.lautaro.multimetrico.enumeration.Metrica;
 import java.time.YearMonth;
@@ -19,4 +22,8 @@ public interface MedicionService {
     MedicionesVigentes vigentesDe(YearMonth periodo, String legajo);
 
     Map<String, MedicionesVigentes> vigentesDelPeriodo(YearMonth periodo);
+
+    AltaResponse registrar(MedicionesRequest request);
+
+    HistoriaResponse historiaDelPeriodo(YearMonth periodo, String legajo, Metrica metrica);
 }

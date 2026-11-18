@@ -20,7 +20,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class MotorDeBandasTest {
 
-    private final PliegoService pliegos = new PliegoServiceImpl(null, null);
+    private final PliegoService pliegos = new PliegoServiceImpl(null, null, null);
 
     private final Escala escala = new Escala(Metrica.FCR, n("3.5"), List.of(
             new Banda(null, n("79.5"), n("-1.5")),

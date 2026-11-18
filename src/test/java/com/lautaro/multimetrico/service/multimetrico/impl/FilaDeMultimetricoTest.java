@@ -21,7 +21,7 @@ class FilaDeMultimetricoTest {
     private static final YearMonth ENERO = YearMonth.of(2027, 1);
 
     private final MultimetricoServiceImpl multimetrico = new MultimetricoServiceImpl(
-            new PliegoServiceImpl(null, null), null, null, new PadronMapperImpl());
+            new PliegoServiceImpl(null, null, null), null, null, new PadronMapperImpl(), null);
 
     private final Pliego pliego = pliego(ENERO);
     private final Asesor flavia = padron(ENERO).porLegajo("u100").orElseThrow();
