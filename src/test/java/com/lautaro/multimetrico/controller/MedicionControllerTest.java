@@ -16,12 +16,6 @@ import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfig
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-/**
- * El contexto de Spring —y con él la base— se comparte entre clases y entre
- * métodos de test. Como las mediciones se acumulan y nunca se pisan, <b>cada test
- * usa su propio período</b>: si dos compartieran uno, el segundo vería la
- * historia que dejó el primero.
- */
 @SpringBootTest
 class MedicionControllerTest {
 
@@ -32,9 +26,6 @@ class MedicionControllerTest {
 
     private MockMvc mvc() {
         if (mockMvc == null) {
-            // springSecurity() mete la cadena de seguridad real en el MockMvc. Sin
-            // esto los tests pasan por al lado de toda la autorizacion: un GET sin
-            // token devolveria 200 y nadie se enteraria de que la regla no anda.
             mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
                     .apply(SecurityMockMvcConfigurers.springSecurity())
                     .build();
@@ -71,10 +62,6 @@ class MedicionControllerTest {
                 .andExpect(jsonPath("$.cortes[0]").value("2027-05-08"));
     }
 
-    /**
-     * La segunda carga no pisa a la primera: las dos quedan y la historia dice
-     * cuál se está usando. Es la conversación que hoy no se puede tener.
-     */
     @Test
     void laHistoriaGuardaLasDosCargasYMarcaCualEsLaVigente() throws Exception {
         registrar(lote("2027-06", "2027-06-08", """
@@ -94,11 +81,6 @@ class MedicionControllerTest {
                 .andExpect(jsonPath("$.mediciones[1].vigente").value(true));
     }
 
-    /**
-     * El lote lleva un corte, pero un ítem puede traer el suyo. Es lo que le
-     * permite al importador subir dos archivos de cortes distintos en una sola
-     * transacción en vez de partir el lote.
-     */
     @Test
     void unItemPuedePisarLaFechaDeCorteDelLote() throws Exception {
         mvc().perform(post("/api/mediciones").contentType(MediaType.APPLICATION_JSON)
@@ -111,7 +93,6 @@ class MedicionControllerTest {
                 .andExpect(jsonPath("$.cortes", org.hamcrest.Matchers.contains("2027-07-01", "2027-07-08")));
     }
 
-    /** Sin valor no hay medición: una métrica que no llegó se deja faltante. */
     @Test
     void rechazaUnaMedicionSinValor() throws Exception {
         mvc().perform(post("/api/mediciones").contentType(MediaType.APPLICATION_JSON)

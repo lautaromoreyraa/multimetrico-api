@@ -31,14 +31,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Carga y lectura de los importes del mes.
- *
- * <p>Reusa las dos piezas difíciles que ya existen: {@link LectorDePlanilla} para
- * abrir el {@code .xlsx} y {@link ResolutorDeNombres} para pasar de un nombre
- * escrito por otro sistema a un legajo. Lo propio de acá es poco: decidir qué
- * hacer con cada fila y guardar el importe.
- */
 @Service
 public class IncentivoServiceImpl implements IncentivoService {
 
@@ -67,14 +59,9 @@ public class IncentivoServiceImpl implements IncentivoService {
         List<FilaLeida> leidas = lector
                 .leer(new ByteArrayInputStream(archivo), perfil.aPerfilDeLectura())
                 .stream()
-                // Las filas totalmente vacías no son datos: son el final de la
-                // hoja o una separación. Contarlas como rechazadas llenaría el
-                // informe de ruido y escondería los rechazos que sí importan.
                 .filter(fila -> !fila.vacia())
                 .toList();
 
-        // Una sola pasada por el resolutor con todos los nombres, en vez de una
-        // por fila: resolver es lo más caro del proceso.
         Resolucion resolucion = resolutor.resolver(padron,
                 leidas.stream().map(FilaLeida::textoAsesor).toList());
 
@@ -116,15 +103,6 @@ public class IncentivoServiceImpl implements IncentivoService {
         return new CargaDeIncentivos(periodo, origen, leidas.size(), aGuardar.size(), rechazadas);
     }
 
-    /**
-     * Por qué no se pudo atribuir la fila.
-     *
-     * <p>El nombre ambiguo se rechaza <b>con los candidatos escritos en el
-     * motivo</b>. No hay bolsa de pendientes como en la importación de métricas:
-     * es más pobre, y es a propósito para esta primera versión. Lo que no se
-     * resigna es que la fila desaparezca en silencio, que es el defecto que este
-     * proyecto existe para no repetir.
-     */
     private static String motivoDe(Pendiente pendiente) {
         if (pendiente == null) {
             return "no se parece a nadie del padrón de este período";
@@ -175,14 +153,6 @@ public class IncentivoServiceImpl implements IncentivoService {
                 filas);
     }
 
-    /**
-     * El importe vigente de cada legajo: <b>el de la última carga</b>.
-     *
-     * <p>La consulta viene ordenada por id, así que recorrer y pisar deja arriba
-     * el más nuevo. Es el mismo contrato que el de las mediciones y depende de lo
-     * mismo: si alguien cambia ese {@code ORDER BY}, la corrección que subieron
-     * ayer deja de ganar sin que nada avise.
-     */
     private Map<String, BigDecimal> vigentesDe(YearMonth periodo) {
         Map<String, BigDecimal> vigentes = new LinkedHashMap<>();
         for (Incentivo incentivo : repositorio.delPeriodo(periodo)) {

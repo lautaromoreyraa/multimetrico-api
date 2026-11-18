@@ -9,15 +9,6 @@ import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
 
-/**
- * El pliego como llega por HTTP.
- *
- * <p>Los DTOs se quedan en el borde: la entidad no sabe que existe JSON. Los
- * extremos abiertos viajan como {@code null} —{@code desde: null} es "sin
- * mínimo"—, que es la forma honesta de decirlo. La planilla usa el texto
- * "Máximo" en una tabla y el número -1 en otra para lo mismo; traducir esas dos
- * convenciones a null es trabajo del importador, no del modelo.
- */
 public record PliegoRequest(
         @NotNull(message = "el período es obligatorio (formato aaaa-mm)") YearMonth periodo,
         @NotBlank(message = "la campaña es obligatoria") String campania,

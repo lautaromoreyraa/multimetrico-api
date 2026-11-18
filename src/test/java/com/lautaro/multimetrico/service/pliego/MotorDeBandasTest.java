@@ -18,19 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-/**
- * El borde de la banda es donde todo se rompe, así que es donde más se prueba.
- *
- * <p>El servicio se construye con sus dos dependencias en {@code null} y eso es
- * deliberado: {@code evaluar(Pliego, Map)} es una función pura —no toca el
- * repositorio ni el validador— y probarla levantando Spring escondería
- * justamente esa propiedad. Si algún día ese método empezara a leer de la base,
- * este test explota con un {@code NullPointerException}, que es exactamente el
- * aviso que se quiere.
- */
 class MotorDeBandasTest {
 
-    private final PliegoService pliegos = new PliegoServiceImpl(null, null);
+    private final PliegoService pliegos = new PliegoServiceImpl(null, null, null);
 
     private final Escala escala = new Escala(Metrica.FCR, n("3.5"), List.of(
             new Banda(null, n("79.5"), n("-1.5")),
@@ -39,15 +29,11 @@ class MotorDeBandasTest {
 
     @ParameterizedTest(name = "un valor de {0} paga {1}")
     @CsvSource({
-            // El piso entra, el techo no: 79.5 es la primera de su banda y 80.1
-            // ya pertenece a la de arriba.
             "79.4999, -1.5",
             "79.5,     0",
             "80.0999,  0",
             "80.1,     3.5",
-            // El caso que en la planilla no caía en ninguna banda.
             "80.04,    0",
-            // Extremos abiertos: nada se sale de la escala.
             "0,       -1.5",
             "100,      3.5",
             "180,      3.5"
@@ -60,11 +46,6 @@ class MotorDeBandasTest {
                 .isEqualTo(n(esperado));
     }
 
-    /**
-     * La escala compara con {@code compareTo} y no con {@code equals}: 80.10 y
-     * 80.1 son el mismo número aunque sean distintos objetos. Con {@code equals}
-     * de BigDecimal, un valor con un cero de más se caería de su banda.
-     */
     @Test
     void losCerosDeMasNoCambianLaBanda() {
         assertThat(escala.bandaPara(n("80.100")))
@@ -84,11 +65,6 @@ class MotorDeBandasTest {
         assertThat(evaluacion.completa()).isTrue();
     }
 
-    /**
-     * Una métrica que todavía no llegó no vale cero: las métricas se actualizan
-     * en fechas distintas y contarla como cero le inventaría un mal desempeño a
-     * alguien por un archivo que no se subió.
-     */
     @Test
     void loQueFaltaSeInformaComoFaltanteYNoComoCero() {
         Evaluacion evaluacion = pliegos.evaluar(PliegoDeEjemplo.sano(), Map.of(Metrica.NPS, n("80")));
@@ -105,7 +81,6 @@ class MotorDeBandasTest {
         assertThat(evaluacion.alcances().get(Metrica.NPS).banda()).isEqualTo("[50, 75)");
     }
 
-    /** Un valor que no cae en ninguna banda se informa, no se tapa con un cero. */
     @Test
     void loQueNoCaeEnNingunaBandaSeInformaFueraDeEscala() {
         Escala conHueco = new Escala(Metrica.FCR, n("3.5"), List.of(
@@ -125,11 +100,6 @@ class MotorDeBandasTest {
         assertThat(PliegoDeEjemplo.sano().alcanceMaximo()).isEqualByComparingTo("7.0");
     }
 
-    /**
-     * El mismo valor con dos pliegos distintos da resultados distintos. Es la
-     * razón de guardar el pliego de cada mes: sin eso, recalcular un período
-     * viejo con las bandas de hoy devuelve otro número.
-     */
     @Test
     void elMismoValorPagaDistintoSiElPliegoCambio() {
         BigDecimal mismoNps = n("60");

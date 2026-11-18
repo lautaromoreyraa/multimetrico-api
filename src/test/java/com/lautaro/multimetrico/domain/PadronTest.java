@@ -14,10 +14,6 @@ class PadronTest {
             new Asesor("u200", "MIÑO HECTOR BAUTISTA", "PERALTA SILVIA"),
             new Asesor("u300", "SOSA ANA MARIA", "LEDESMA JORGE")));
 
-    /**
-     * El filtrado que hoy hace cada supervisor a mano, en cada archivo, todas las
-     * semanas.
-     */
     @Test
     void filtraElEquipoDeUnLider() {
         assertThat(padron.equipoDe("PERALTA SILVIA"))

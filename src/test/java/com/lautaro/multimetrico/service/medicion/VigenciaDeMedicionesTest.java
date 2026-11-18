@@ -14,17 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/**
- * Cuál de todas las cargas es la que vale.
- *
- * <p>Es la regla más sutil del módulo y la que más barato sale romper: gana la
- * del corte más reciente y, empatado el corte, la última cargada. Se prueba
- * contra la base porque "la última cargada" lo decide el {@code ORDER BY id} de
- * la consulta, no algo que el servicio pueda garantizar por su cuenta.
- *
- * <p>Cada test usa su propio período: la historia se acumula y el contexto se
- * comparte entre clases.
- */
 @SpringBootTest
 class VigenciaDeMedicionesTest {
 
@@ -51,10 +40,6 @@ class VigenciaDeMedicionesTest {
                 .isEqualTo(new BigDecimal("78.2"));
     }
 
-    /**
-     * El archivo de la semana pasada puede llegar tarde. Que se cargue después no
-     * lo hace más nuevo.
-     */
     @Test
     void unaCargaTardiaConCorteViejoNoDesplazaALaVigente() {
         MedicionesVigentes vigentes = vigentesTras(YearMonth.of(2041, 2),
@@ -66,11 +51,6 @@ class VigenciaDeMedicionesTest {
                 .isEqualTo(new BigDecimal("78.2"));
     }
 
-    /**
-     * Dos cargas del mismo corte son el mismo archivo subido dos veces, y la
-     * segunda es la corrección. Quedarse con la primera dejaría sin efecto la
-     * corrección.
-     */
     @Test
     void conElMismoCorteGanaLaUltimaCargada() {
         MedicionesVigentes vigentes = vigentesTras(YearMonth.of(2041, 3),
@@ -92,7 +72,6 @@ class VigenciaDeMedicionesTest {
         assertThat(vigentes.corteDe(Metrica.FCR)).contains(LocalDate.parse("2041-04-15"));
     }
 
-    /** Una métrica sin medición está faltante: no aparece, y no aparece en cero. */
     @Test
     void unaMetricaSinMedicionNoApareceEnLosValores() {
         MedicionesVigentes vigentes = vigentesTras(YearMonth.of(2041, 5),

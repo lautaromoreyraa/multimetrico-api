@@ -10,27 +10,6 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/**
- * Crea el primer administrador, para poder entrar a una base recién creada.
- *
- * <h2>Por qué no una migración de Flyway</h2>
- *
- * <p>Una migración que inserta un usuario tiene que traer el hash de la
- * contraseña escrito en el archivo, y ese archivo va al repositorio. Sería la
- * misma contraseña en todas las instalaciones y estaría publicada.
- *
- * <p>Acá la contraseña viene del entorno y el hash se calcula al arrancar.
- *
- * <h2>Sin contraseña configurada no crea nada</h2>
- *
- * <p>Y es lo correcto. La alternativa —un "admin/admin" por defecto— deja una
- * base recién desplegada con una cuenta que adivina cualquiera, y encima nadie se
- * entera porque la aplicación arranca bien.
- *
- * <p>Sólo actúa si la tabla está <b>vacía</b>. Una vez que hay usuarios no toca
- * nada, así que cambiar la contraseña del admin desde adentro no se deshace en el
- * próximo reinicio.
- */
 @Component
 public class CreadorDeAdminInicial implements ApplicationRunner {
 

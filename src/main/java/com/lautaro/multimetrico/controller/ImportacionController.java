@@ -1,7 +1,6 @@
 package com.lautaro.multimetrico.controller;
 
 import com.lautaro.multimetrico.dto.importacion.ImportacionResponse;
-import com.lautaro.multimetrico.mapper.ImportacionMapper;
 import com.lautaro.multimetrico.service.importacion.ImportacionService;
 import com.lautaro.multimetrico.util.PeriodoUtil;
 import java.io.IOException;
@@ -23,19 +22,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImportacionController {
 
     private final ImportacionService servicio;
-    private final ImportacionMapper mapper;
 
-    public ImportacionController(ImportacionService servicio, ImportacionMapper mapper) {
+    public ImportacionController(ImportacionService servicio) {
         this.servicio = servicio;
-        this.mapper = mapper;
     }
 
-    /**
-     * Recibe el archivo y responde con el id.
-     *
-     * <p>Devuelve {@code 202 Accepted} y no {@code 201}: cuando la respuesta sale,
-     * la importación todavía se está procesando. El estado se consulta después.
-     */
     @PostMapping
     public ResponseEntity<ImportacionResponse> importar(
             @RequestParam("archivo") MultipartFile archivo,
@@ -43,32 +34,24 @@ public class ImportacionController {
             @RequestParam @DateTimeFormat(pattern = PeriodoUtil.PATRON) YearMonth periodo,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate corte) throws IOException {
 
-        var recibida = servicio.recibir(perfil, periodo, corte, archivo.getBytes());
-        return ResponseEntity.accepted().body(mapper.aResponse(recibida));
+        return ResponseEntity.accepted().body(servicio.importar(perfil, periodo, corte, archivo.getBytes()));
     }
 
     @GetMapping("/{id}")
     public ImportacionResponse ver(@PathVariable String id) {
-        return mapper.aResponse(servicio.buscar(id));
+        return servicio.ver(id);
     }
 
     @GetMapping
     public List<ImportacionResponse> historial() {
-        return servicio.historial().stream().map(mapper::aResponse).toList();
+        return servicio.importaciones();
     }
 
-    /**
-     * Asigna a mano una fila que quedó pendiente.
-     *
-     * <p>Vale para esta fila de este archivo, y no crea un alias global: un nombre
-     * cortado que apunta a dos personas puede ser una este mes y la otra el
-     * siguiente.
-     */
     @PostMapping("/{id}/pendientes/{fila}")
     public ImportacionResponse resolver(
             @PathVariable String id,
             @PathVariable int fila,
             @RequestParam String legajo) {
-        return mapper.aResponse(servicio.resolverPendiente(id, fila, legajo));
+        return servicio.asignarPendiente(id, fila, legajo);
     }
 }

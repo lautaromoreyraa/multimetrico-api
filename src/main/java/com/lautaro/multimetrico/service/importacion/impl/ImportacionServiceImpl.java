@@ -2,12 +2,17 @@ package com.lautaro.multimetrico.service.importacion.impl;
 
 import com.lautaro.multimetrico.domain.Importacion;
 import com.lautaro.multimetrico.domain.Medicion;
+import com.lautaro.multimetrico.domain.NombreNormalizado;
 import com.lautaro.multimetrico.domain.PerfilDeImportacion;
 import com.lautaro.multimetrico.dto.importacion.DiscrepanciaDeLider;
 import com.lautaro.multimetrico.dto.importacion.FilaPendiente;
 import com.lautaro.multimetrico.dto.importacion.FilaRechazada;
+import com.lautaro.multimetrico.dto.importacion.ImportacionResponse;
 import com.lautaro.multimetrico.dto.importacion.Informe;
 import com.lautaro.multimetrico.dto.padron.AsesorResponse;
+import com.lautaro.multimetrico.dto.perfil.InspeccionResponse;
+import com.lautaro.multimetrico.dto.perfil.PerfilRequest;
+import com.lautaro.multimetrico.dto.perfil.PerfilResponse;
 import com.lautaro.multimetrico.dto.planilla.FilaLeida;
 import com.lautaro.multimetrico.dto.resolucion.Coincidencia;
 import com.lautaro.multimetrico.dto.resolucion.Pendiente;
@@ -15,15 +20,15 @@ import com.lautaro.multimetrico.dto.resolucion.Resolucion;
 import com.lautaro.multimetrico.enumeration.MotivoDeRechazo;
 import com.lautaro.multimetrico.exception.RecursoNoEncontradoException;
 import com.lautaro.multimetrico.mapper.ImportacionMapper;
+import com.lautaro.multimetrico.mapper.PerfilMapper;
 import com.lautaro.multimetrico.repository.ImportacionRepository;
 import com.lautaro.multimetrico.repository.PerfilRepository;
 import com.lautaro.multimetrico.service.importacion.ImportacionService;
 import com.lautaro.multimetrico.service.medicion.MedicionService;
 import com.lautaro.multimetrico.service.padron.PadronService;
+import com.lautaro.multimetrico.service.planilla.InterpreteDeNumeros;
 import com.lautaro.multimetrico.service.planilla.LectorDePlanilla;
 import com.lautaro.multimetrico.service.procesamiento.ProcesadorDeImportaciones;
-import com.lautaro.multimetrico.util.NombreNormalizado;
-import com.lautaro.multimetrico.util.NumeroUtil;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -37,7 +42,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** La importación de planillas. La propiedad que define el módulo está en la interfaz. */
 @Service
 public class ImportacionServiceImpl implements ImportacionService {
 
@@ -48,10 +52,11 @@ public class ImportacionServiceImpl implements ImportacionService {
     private final PadronService padrones;
     private final MedicionService mediciones;
     private final ImportacionMapper mapper;
+    private final PerfilMapper perfilMapper;
 
     public ImportacionServiceImpl(LectorDePlanilla lector, ProcesadorDeImportaciones procesador,
             PerfilRepository perfiles, ImportacionRepository importaciones, PadronService padrones,
-            MedicionService mediciones, ImportacionMapper mapper) {
+            MedicionService mediciones, ImportacionMapper mapper, PerfilMapper perfilMapper) {
 
         this.lector = lector;
         this.procesador = procesador;
@@ -60,6 +65,7 @@ public class ImportacionServiceImpl implements ImportacionService {
         this.padrones = padrones;
         this.mediciones = mediciones;
         this.mapper = mapper;
+        this.perfilMapper = perfilMapper;
     }
 
     @Override
@@ -101,15 +107,6 @@ public class ImportacionServiceImpl implements ImportacionService {
         return importaciones.findAllByOrderByIniciadaDesc();
     }
 
-    /**
-     * Recibe el archivo, deja anotada la importación y devuelve el id enseguida.
-     *
-     * <p><b>Este método no lleva {@code @Transactional} y es a propósito.</b> El
-     * procesamiento arranca en otro hilo y lo primero que hace es leer la fila por
-     * su id: si el alta estuviera dentro de una transacción todavía abierta, ese
-     * hilo no la encontraría. Cada {@code save} abre la suya y commitea, y recién
-     * después se llama al procesador.
-     */
     @Override
     public Importacion recibir(String nombrePerfil, YearMonth periodo, LocalDate corte, byte[] archivo) {
         PerfilDeImportacion perfil = perfil(nombrePerfil);
@@ -154,18 +151,6 @@ public class ImportacionServiceImpl implements ImportacionService {
         return importaciones.save(importacion);
     }
 
-    /**
-     * Reparte las filas en importadas, rechazadas y pendientes.
-     *
-     * <p>Los nombres se resuelven <b>todos juntos, en una sola pasada</b> contra
-     * el padrón, y no fila por fila. No es una optimización: el resolutor necesita
-     * ver el padrón entero para decidir si un nombre cortado apunta a una sola
-     * persona o a varias, y esa decisión no se puede tomar mirando una fila
-     * aislada.
-     *
-     * <p>Corre en el hilo del pool de importaciones, invocada como función desde
-     * {@code ProcesadorDeImportaciones}.
-     */
     private Informe interpretar(String id, PerfilDeImportacion perfil, YearMonth periodo,
             LocalDate corte, List<FilaLeida> filas) {
 
@@ -179,7 +164,7 @@ public class ImportacionServiceImpl implements ImportacionService {
                         fila.valor().texto(), MotivoDeRechazo.ASESOR_VACIO));
                 continue;
             }
-            Optional<BigDecimal> valor = NumeroUtil.interpretar(perfil.formatoNumero(), fila.valor());
+            Optional<BigDecimal> valor = InterpreteDeNumeros.interpretar(perfil.formatoNumero(), fila.valor());
             if (valor.isEmpty()) {
                 rechazadas.add(new FilaRechazada(fila.numeroDeFila(), fila.textoAsesor(), fila.valor().texto(),
                         fila.valor().estaVacio()
@@ -220,25 +205,12 @@ public class ImportacionServiceImpl implements ImportacionService {
             aRegistrar.add(new Medicion(asesor.legajo(), perfil.metrica(), periodo, valor, corte, id));
         }
 
-        // Que no se haya resuelto ni una fila es un resultado posible —un archivo
-        // entero de gente que no está en el padrón—, no un error. El servicio de
-        // mediciones rechaza los lotes vacíos, así que acá se evita llamarlo.
         if (!aRegistrar.isEmpty()) {
             mediciones.registrar(aRegistrar);
         }
         return new Informe(filas.size(), aRegistrar.size(), rechazadas, pendientes, discrepancias);
     }
 
-    /**
-     * Si el archivo dice que el asesor es de otro equipo que el padrón, se anota
-     * pero <b>no se rechaza la fila</b>.
-     *
-     * <p>Manda el padrón: es la fuente de verdad de quién está bajo qué líder, y
-     * la medición pertenece a la persona igual. Pero la discrepancia se informa,
-     * porque casi siempre significa que alguien cambió de equipo y el padrón del
-     * período quedó viejo — y eso conviene saberlo antes de que el multimétrico
-     * muestre a la persona en la tabla equivocada.
-     */
     private void anotarDiscrepanciaDeLider(FilaLeida fila, AsesorResponse asesor,
             List<DiscrepanciaDeLider> discrepancias) {
 
@@ -250,5 +222,46 @@ public class ImportacionServiceImpl implements ImportacionService {
             discrepancias.add(new DiscrepanciaDeLider(fila.numeroDeFila(), fila.textoAsesor(),
                     asesor.legajo(), fila.textoLider(), asesor.lider()));
         }
+    }
+
+    @Override
+    public ImportacionResponse importar(String nombrePerfil, YearMonth periodo, LocalDate corte, byte[] archivo) {
+        return mapper.aResponse(recibir(nombrePerfil, periodo, corte, archivo));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ImportacionResponse ver(String id) {
+        return mapper.aResponse(buscar(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ImportacionResponse> importaciones() {
+        return historial().stream().map(mapper::aResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public ImportacionResponse asignarPendiente(String id, int numeroDeFila, String legajo) {
+        return mapper.aResponse(resolverPendiente(id, numeroDeFila, legajo));
+    }
+
+    @Override
+    @Transactional
+    public PerfilResponse definirPerfil(PerfilRequest request) {
+        return perfilMapper.aResponse(definirPerfil(perfilMapper.aEntidad(request)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PerfilResponse> perfilesDefinidos() {
+        return perfilMapper.aResponses(perfiles());
+    }
+
+    @Override
+    public InspeccionResponse inspeccionarPlanilla(byte[] archivo, String hoja, int filaEncabezados) {
+        List<String> hojas = hojasDe(archivo);
+        return perfilMapper.aInspeccion(hojas, filaEncabezados, inspeccionar(archivo, hoja, filaEncabezados));
     }
 }
