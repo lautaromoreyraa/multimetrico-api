@@ -2,6 +2,7 @@ package com.lautaro.multimetrico.service.padron.impl;
 
 import com.lautaro.multimetrico.domain.AliasDeNombre;
 import com.lautaro.multimetrico.domain.Asesor;
+import com.lautaro.multimetrico.domain.NombreNormalizado;
 import com.lautaro.multimetrico.domain.Padron;
 import com.lautaro.multimetrico.dto.resolucion.Resolucion;
 import com.lautaro.multimetrico.exception.RecursoNoEncontradoException;
@@ -9,7 +10,6 @@ import com.lautaro.multimetrico.repository.AliasRepository;
 import com.lautaro.multimetrico.repository.PadronRepository;
 import com.lautaro.multimetrico.service.padron.PadronService;
 import com.lautaro.multimetrico.service.resolucion.ResolutorDeNombres;
-import com.lautaro.multimetrico.util.NombreNormalizado;
 import java.time.YearMonth;
 import java.util.List;
 import org.springframework.stereotype.Service;

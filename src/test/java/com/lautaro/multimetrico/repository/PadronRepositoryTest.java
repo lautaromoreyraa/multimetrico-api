@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.lautaro.multimetrico.domain.AliasDeNombre;
 import com.lautaro.multimetrico.domain.Asesor;
+import com.lautaro.multimetrico.domain.NombreNormalizado;
 import com.lautaro.multimetrico.domain.Padron;
 import com.lautaro.multimetrico.service.padron.PadronService;
-import com.lautaro.multimetrico.util.NombreNormalizado;
 import java.time.YearMonth;
 import java.util.List;
 import org.junit.jupiter.api.Test;

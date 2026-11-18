@@ -1,6 +1,5 @@
 package com.lautaro.multimetrico.service.seguridad.impl;
 
-import com.lautaro.multimetrico.config.PropiedadesDeSeguridad;
 import com.lautaro.multimetrico.domain.Usuario;
 import com.lautaro.multimetrico.dto.seguridad.Credencial;
 import com.lautaro.multimetrico.enumeration.Rol;
@@ -17,9 +16,7 @@ import javax.crypto.SecretKey;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
-@Service
 public class ServicioDeTokensImpl implements ServicioDeTokens {
 
     private static final Logger log = LoggerFactory.getLogger(ServicioDeTokensImpl.class);
@@ -31,11 +28,15 @@ public class ServicioDeTokensImpl implements ServicioDeTokens {
     private final long minutosDeVigencia;
     private final String emisor;
 
-    public ServicioDeTokensImpl(PropiedadesDeSeguridad propiedades) {
-        this.clave = Keys.hmacShaKeyFor(
-                propiedades.getJwt().getSecreto().getBytes(StandardCharsets.UTF_8));
-        this.minutosDeVigencia = propiedades.getJwt().getMinutosDeVigencia();
-        this.emisor = propiedades.getJwt().getEmisor();
+    public ServicioDeTokensImpl(String secreto, long minutosDeVigencia, String emisor) {
+        this.clave = Keys.hmacShaKeyFor(secreto.getBytes(StandardCharsets.UTF_8));
+        this.minutosDeVigencia = minutosDeVigencia;
+        this.emisor = emisor;
+    }
+
+    @Override
+    public long minutosDeVigencia() {
+        return minutosDeVigencia;
     }
 
     @Override

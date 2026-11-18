@@ -1,6 +1,5 @@
 package com.lautaro.multimetrico.controller;
 
-import com.lautaro.multimetrico.domain.Usuario;
 import com.lautaro.multimetrico.dto.seguridad.UsuarioRequest;
 import com.lautaro.multimetrico.dto.seguridad.UsuarioResponse;
 import com.lautaro.multimetrico.service.seguridad.UsuarioService;
@@ -26,16 +25,11 @@ public class UsuarioController {
 
     @PostMapping
     public ResponseEntity<UsuarioResponse> crear(@Valid @RequestBody UsuarioRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(aResponse(usuarios.crear(request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuarios.crear(request));
     }
 
     @GetMapping
     public List<UsuarioResponse> listar() {
-        return usuarios.listar().stream().map(UsuarioController::aResponse).toList();
-    }
-
-    private static UsuarioResponse aResponse(Usuario usuario) {
-        return new UsuarioResponse(
-                usuario.legajo(), usuario.nombre(), usuario.rol(), usuario.lider(), usuario.activo());
+        return usuarios.listar();
     }
 }

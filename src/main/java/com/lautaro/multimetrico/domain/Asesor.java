@@ -1,6 +1,5 @@
 package com.lautaro.multimetrico.domain;
 
-import com.lautaro.multimetrico.util.NombreNormalizado;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

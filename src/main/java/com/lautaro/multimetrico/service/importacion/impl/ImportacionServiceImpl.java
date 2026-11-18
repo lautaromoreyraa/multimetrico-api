@@ -2,6 +2,7 @@ package com.lautaro.multimetrico.service.importacion.impl;
 
 import com.lautaro.multimetrico.domain.Importacion;
 import com.lautaro.multimetrico.domain.Medicion;
+import com.lautaro.multimetrico.domain.NombreNormalizado;
 import com.lautaro.multimetrico.domain.PerfilDeImportacion;
 import com.lautaro.multimetrico.dto.importacion.DiscrepanciaDeLider;
 import com.lautaro.multimetrico.dto.importacion.FilaPendiente;
@@ -20,10 +21,9 @@ import com.lautaro.multimetrico.repository.PerfilRepository;
 import com.lautaro.multimetrico.service.importacion.ImportacionService;
 import com.lautaro.multimetrico.service.medicion.MedicionService;
 import com.lautaro.multimetrico.service.padron.PadronService;
+import com.lautaro.multimetrico.service.planilla.InterpreteDeNumeros;
 import com.lautaro.multimetrico.service.planilla.LectorDePlanilla;
 import com.lautaro.multimetrico.service.procesamiento.ProcesadorDeImportaciones;
-import com.lautaro.multimetrico.util.NombreNormalizado;
-import com.lautaro.multimetrico.util.NumeroUtil;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -157,7 +157,7 @@ public class ImportacionServiceImpl implements ImportacionService {
                         fila.valor().texto(), MotivoDeRechazo.ASESOR_VACIO));
                 continue;
             }
-            Optional<BigDecimal> valor = NumeroUtil.interpretar(perfil.formatoNumero(), fila.valor());
+            Optional<BigDecimal> valor = InterpreteDeNumeros.interpretar(perfil.formatoNumero(), fila.valor());
             if (valor.isEmpty()) {
                 rechazadas.add(new FilaRechazada(fila.numeroDeFila(), fila.textoAsesor(), fila.valor().texto(),
                         fila.valor().estaVacio()

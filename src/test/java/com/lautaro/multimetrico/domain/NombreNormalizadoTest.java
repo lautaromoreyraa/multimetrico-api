@@ -1,4 +1,4 @@
-package com.lautaro.multimetrico.util;
+package com.lautaro.multimetrico.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

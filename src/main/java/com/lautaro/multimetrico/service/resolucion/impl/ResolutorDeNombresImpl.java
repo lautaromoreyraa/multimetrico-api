@@ -2,6 +2,7 @@ package com.lautaro.multimetrico.service.resolucion.impl;
 
 import com.lautaro.multimetrico.domain.AliasDeNombre;
 import com.lautaro.multimetrico.domain.Asesor;
+import com.lautaro.multimetrico.domain.NombreNormalizado;
 import com.lautaro.multimetrico.domain.Padron;
 import com.lautaro.multimetrico.dto.resolucion.Coincidencia;
 import com.lautaro.multimetrico.dto.resolucion.Pendiente;
@@ -10,7 +11,6 @@ import com.lautaro.multimetrico.enumeration.Estrategia;
 import com.lautaro.multimetrico.mapper.PadronMapper;
 import com.lautaro.multimetrico.repository.AliasRepository;
 import com.lautaro.multimetrico.service.resolucion.ResolutorDeNombres;
-import com.lautaro.multimetrico.util.NombreNormalizado;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

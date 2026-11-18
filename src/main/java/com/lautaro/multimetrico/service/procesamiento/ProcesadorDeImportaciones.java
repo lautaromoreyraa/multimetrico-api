@@ -10,6 +10,8 @@ import java.util.function.BiFunction;
 
 public interface ProcesadorDeImportaciones {
 
+    String POOL = "importaciones";
+
     void procesar(String id, PerfilDeImportacion perfil, YearMonth periodo, LocalDate corte,
             byte[] archivo, BiFunction<String, List<FilaLeida>, Informe> interprete);
 }
