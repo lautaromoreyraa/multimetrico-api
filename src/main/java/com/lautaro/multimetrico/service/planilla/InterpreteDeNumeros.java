@@ -1,13 +1,14 @@
-package com.lautaro.multimetrico.util;
+package com.lautaro.multimetrico.service.planilla;
 
 import com.lautaro.multimetrico.domain.FormatoDeNumero;
 import com.lautaro.multimetrico.dto.planilla.ValorCrudo;
 import com.lautaro.multimetrico.enumeration.EscalaDeNumero;
 import com.lautaro.multimetrico.enumeration.SeparadorDecimal;
+import com.lautaro.multimetrico.util.DecimalUtil;
 import java.math.BigDecimal;
 import java.util.Optional;
 
-public final class NumeroUtil {
+public final class InterpreteDeNumeros {
 
     private static final BigDecimal CIEN = new BigDecimal("100");
 
@@ -15,7 +16,7 @@ public final class NumeroUtil {
 
     private static final String UN_NUMERO = "[+-]?\\d+(\\.\\d+)?";
 
-    private NumeroUtil() {
+    private InterpreteDeNumeros() {
     }
 
     public static Optional<BigDecimal> interpretar(FormatoDeNumero formato, ValorCrudo crudo) {

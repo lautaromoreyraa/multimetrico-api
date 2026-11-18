@@ -9,4 +9,6 @@ public interface ServicioDeTokens {
     String emitirPara(Usuario usuario);
 
     Optional<Credencial> leer(String token);
+
+    long minutosDeVigencia();
 }

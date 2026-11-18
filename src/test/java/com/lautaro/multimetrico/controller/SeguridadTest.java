@@ -21,7 +21,9 @@ import com.lautaro.multimetrico.service.padron.PadronService;
 import com.lautaro.multimetrico.service.pliego.PliegoService;
 import com.lautaro.multimetrico.service.seguridad.ServicioDeTokens;
 import com.lautaro.multimetrico.service.seguridad.UsuarioService;
+import java.time.Instant;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -150,6 +152,26 @@ class SeguridadTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void crearYListarUsuariosDevuelveSusDatosSinLaContrasena() throws Exception {
+        mvc().perform(post("/api/usuarios").with(como(admin()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"legajo":"k903","nombre":"Prueba Alta","password":"unacontrasenalarga",
+                                "rol":"SUPERVISOR","lider":"Equipo Norte"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.legajo").value("k903"))
+                .andExpect(jsonPath("$.nombre").value("Prueba Alta"))
+                .andExpect(jsonPath("$.rol").value("SUPERVISOR"))
+                .andExpect(jsonPath("$.lider").value("Equipo Norte"))
+                .andExpect(jsonPath("$.activo").value(true))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        mvc().perform(get("/api/usuarios").with(como(admin())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.legajo == 'k903')].nombre").value("Prueba Alta"))
+                .andExpect(jsonPath("$[?(@.legajo == 'k903')].activo").value(true));
+    }
 
     @Test
     void aUnGetPublicoLeFaltaUnParametroYDice400() throws Exception {
@@ -179,6 +201,9 @@ class SeguridadTest {
 
         assertThat(respuesta.legajo()).isEqualTo("k900");
         assertThat(respuesta.rol()).isEqualTo(Rol.ADMIN);
+
+        assertThat(respuesta.vence())
+                .isBetween(Instant.now().plus(59, ChronoUnit.MINUTES), Instant.now().plus(61, ChronoUnit.MINUTES));
 
         assertThat(tokens.leer(respuesta.token())).hasValueSatisfying(credencial -> {
             assertThat(credencial.legajo()).isEqualTo("k900");

@@ -1,4 +1,4 @@
-package com.lautaro.multimetrico.util;
+package com.lautaro.multimetrico.domain;
 
 import java.text.Normalizer;
 import java.util.List;

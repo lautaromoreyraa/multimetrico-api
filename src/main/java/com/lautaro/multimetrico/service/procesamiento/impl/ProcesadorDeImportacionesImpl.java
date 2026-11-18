@@ -1,6 +1,5 @@
 package com.lautaro.multimetrico.service.procesamiento.impl;
 
-import com.lautaro.multimetrico.config.ConfiguracionDeImportacion;
 import com.lautaro.multimetrico.domain.Importacion;
 import com.lautaro.multimetrico.domain.PerfilDeImportacion;
 import com.lautaro.multimetrico.dto.importacion.Desajuste;
@@ -35,7 +34,7 @@ public class ProcesadorDeImportacionesImpl implements ProcesadorDeImportaciones 
     }
 
     @Override
-    @Async(ConfiguracionDeImportacion.POOL)
+    @Async(ProcesadorDeImportaciones.POOL)
     public void procesar(String id, PerfilDeImportacion perfil, YearMonth periodo, LocalDate corte,
             byte[] archivo, BiFunction<String, List<FilaLeida>, Informe> interprete) {
 

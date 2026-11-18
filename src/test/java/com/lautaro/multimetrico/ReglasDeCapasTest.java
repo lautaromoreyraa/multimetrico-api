@@ -51,9 +51,28 @@ class ReglasDeCapasTest {
             .allowEmptyShould(true);
 
     @ArchTest
-    static final ArchRule sinCiclosEntreCapas = FreezingArchRule.freeze(slices()
+    static final ArchRule utilNoDependeDeOtrasCapas = noClasses()
+            .that().resideInAPackage(BASE + ".util..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    BASE + ".config..", BASE + ".controller..", BASE + ".domain..", BASE + ".dto..",
+                    BASE + ".enumeration..", BASE + ".exception..", BASE + ".mapper..",
+                    BASE + ".repository..", BASE + ".service..")
+            .because("util son helpers sin estado que cualquier capa puede usar: si conocen una capa, "
+                    + "esa capa queda atada a todas las que los usan")
+            .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule elServiceNoDependeDeLaConfiguracion = noClasses()
+            .that().resideInAPackage(BASE + ".service..")
+            .should().dependOnClassesThat().resideInAPackage(BASE + ".config..")
+            .because("config arma los services y les pasa los valores; si un service conoce config, "
+                    + "las dos capas quedan en ciclo")
+            .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule sinCiclosEntreCapas = slices()
             .matching(BASE + ".(*)..")
             .should().beFreeOfCycles()
             .because("un ciclo entre capas deja de tener un arriba y un abajo, y cualquier cambio arrastra a las dos")
-            .allowEmptyShould(true));
+            .allowEmptyShould(true);
 }

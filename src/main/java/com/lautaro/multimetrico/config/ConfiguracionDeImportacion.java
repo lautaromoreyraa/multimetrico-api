@@ -1,5 +1,6 @@
 package com.lautaro.multimetrico.config;
 
+import com.lautaro.multimetrico.service.procesamiento.ProcesadorDeImportaciones;
 import java.util.concurrent.Executor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -12,15 +13,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @EnableConfigurationProperties(PropiedadesDeImportacion.class)
 public class ConfiguracionDeImportacion {
 
-    public static final String POOL = "importaciones";
-
     private final PropiedadesDeImportacion propiedades;
 
     public ConfiguracionDeImportacion(PropiedadesDeImportacion propiedades) {
         this.propiedades = propiedades;
     }
 
-    @Bean(POOL)
+    @Bean(ProcesadorDeImportaciones.POOL)
     public Executor importaciones() {
         ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
         pool.setCorePoolSize(propiedades.hilos());

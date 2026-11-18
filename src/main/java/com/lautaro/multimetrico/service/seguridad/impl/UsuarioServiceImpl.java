@@ -1,10 +1,10 @@
 package com.lautaro.multimetrico.service.seguridad.impl;
 
-import com.lautaro.multimetrico.config.PropiedadesDeSeguridad;
 import com.lautaro.multimetrico.domain.Usuario;
 import com.lautaro.multimetrico.dto.seguridad.LoginRequest;
 import com.lautaro.multimetrico.dto.seguridad.TokenResponse;
 import com.lautaro.multimetrico.dto.seguridad.UsuarioRequest;
+import com.lautaro.multimetrico.dto.seguridad.UsuarioResponse;
 import com.lautaro.multimetrico.enumeration.Rol;
 import com.lautaro.multimetrico.exception.CredencialesInvalidasException;
 import com.lautaro.multimetrico.repository.UsuarioRepository;
@@ -29,14 +29,12 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final UsuarioRepository repositorio;
     private final PasswordEncoder encoder;
     private final ServicioDeTokens tokens;
-    private final long minutosDeVigencia;
 
     public UsuarioServiceImpl(UsuarioRepository repositorio, PasswordEncoder encoder,
-            ServicioDeTokens tokens, PropiedadesDeSeguridad propiedades) {
+            ServicioDeTokens tokens) {
         this.repositorio = repositorio;
         this.encoder = encoder;
         this.tokens = tokens;
-        this.minutosDeVigencia = propiedades.getJwt().getMinutosDeVigencia();
     }
 
     @Override
@@ -58,12 +56,12 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.nombre(),
                 usuario.rol(),
                 usuario.lider(),
-                Instant.now().plus(minutosDeVigencia, ChronoUnit.MINUTES));
+                Instant.now().plus(tokens.minutosDeVigencia(), ChronoUnit.MINUTES));
     }
 
     @Override
     @Transactional
-    public Usuario crear(UsuarioRequest request) {
+    public UsuarioResponse crear(UsuarioRequest request) {
         if (repositorio.existsByLegajoClave(Usuario.clave(request.legajo()))) {
             throw new IllegalArgumentException(
                     "Ya hay un usuario con el legajo %s.".formatted(request.legajo()));
@@ -74,17 +72,23 @@ public class UsuarioServiceImpl implements UsuarioService {
                     "Un SUPERVISOR necesita el nombre del equipo que lidera, tal como figura en el padrón.");
         }
 
-        return repositorio.save(new Usuario(
+        Usuario creado = repositorio.save(new Usuario(
                 request.legajo().trim(),
                 request.nombre().trim(),
                 encoder.encode(request.password()),
                 request.rol(),
                 request.lider() == null || request.lider().isBlank() ? null : request.lider().trim()));
+        return aResponse(creado);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Usuario> listar() {
-        return repositorio.findAll();
+    public List<UsuarioResponse> listar() {
+        return repositorio.findAll().stream().map(UsuarioServiceImpl::aResponse).toList();
+    }
+
+    private static UsuarioResponse aResponse(Usuario usuario) {
+        return new UsuarioResponse(
+                usuario.legajo(), usuario.nombre(), usuario.rol(), usuario.lider(), usuario.activo());
     }
 }
