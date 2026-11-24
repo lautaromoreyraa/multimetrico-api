@@ -44,7 +44,7 @@ The **roster** (*padrón*) gives identity to those rows — and knows each agent
 
 | Layer | Choice |
 |---|---|
-| Language / framework | Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation, Actuator) |
+| Language / framework | Java 21, Spring Boot 4.1 (Web, Data JPA, Security, Validation, Actuator) |
 | Database | MySQL 9, schema owned by Flyway |
 | File import | Apache POI with configurable import profiles, processed asynchronously on a bounded queue |
 | Auth | JWT — reading is public, every write requires an account |
